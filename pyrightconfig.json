@@ -1,0 +1,10 @@
+{
+  "typeCheckingMode": "standard",
+  "reportUnknownMemberType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownParameterType": false,
+  "reportUnnecessaryIsInstance": false,
+  "reportReturnType": false,
+  "reportMissingTypeStubs": false
+}

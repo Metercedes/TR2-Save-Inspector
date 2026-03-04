@@ -1,0 +1,2786 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TR2 Save Inspector (Unofficial)</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<style>
+:root {
+  --glass-bg: rgba(255,255,255,.45);
+  --glass-border: rgba(255,255,255,.55);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,.08);
+  --blur: 20px;
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --text: #1a1a2e;
+  --text-secondary: #555;
+  --bg: #f0f2f5;
+  --surface: #fff;
+  --accent: #4F46E5;
+  --accent-light: #818CF8;
+  --accent-bg: rgba(79,70,229,.08);
+  --success: #059669;
+  --warning: #D97706;
+  --danger: #DC2626;
+  --sidebar-w: 260px;
+  --topbar-h: 56px;
+  --glass-card: rgba(255,255,255,.55);
+  --glass-card-border: rgba(255,255,255,.7);
+  --input-bg: rgba(255,255,255,.6);
+  --input-border: rgba(0,0,0,.12);
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(0,0,0,.15);
+  --glow: rgba(79,70,229,.4);
+}
+[data-theme="dark"] {
+  --glass-bg: rgba(30,30,46,.55);
+  --glass-border: rgba(255,255,255,.1);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,.3);
+  --text: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --bg: #0f0f1a;
+  --surface: #1e1e2e;
+  --glass-card: rgba(30,30,46,.6);
+  --glass-card-border: rgba(255,255,255,.08);
+  --input-bg: rgba(255,255,255,.07);
+  --input-border: rgba(255,255,255,.12);
+  --scrollbar-thumb: rgba(255,255,255,.15);
+  --glow: rgba(129,140,248,.5);
+  --accent-bg: rgba(79,70,229,.15);
+}
+[dir="rtl"] { direction: rtl }
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box }
+*::-webkit-scrollbar { width: 5px; height: 5px }
+*::-webkit-scrollbar-track { background: var(--scrollbar-track) }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9px }
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track) }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; overflow-x: hidden; line-height: 1.5;
+}
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.glass-card {
+  background: var(--glass-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-card-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,.06);
+  padding: 24px;
+  transition: transform .2s, box-shadow .2s;
+}
+.glass-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.1) }
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--topbar-h); z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; gap: 16px;
+}
+.topbar .logo { font-size: 18px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap }
+.topbar-actions { display: flex; align-items: center; gap: 8px }
+.sidebar {
+  position: fixed; top: var(--topbar-h); bottom: 0;
+  width: var(--sidebar-w); z-index: 90;
+  overflow-y: auto; padding: 16px 12px;
+  transition: transform .3s;
+}
+[dir="ltr"] .sidebar { left: 0; border-right: 1px solid var(--glass-border) }
+[dir="rtl"] .sidebar { right: 0; border-left: 1px solid var(--glass-border) }
+.sidebar-group { margin-bottom: 16px }
+.sidebar-group-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-secondary);
+  padding: 8px 12px 4px; user-select: none;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 14px; font-weight: 500;
+  color: var(--text); transition: background .15s, color .15s; user-select: none;
+}
+.sidebar-item:hover { background: var(--accent-bg) }
+.sidebar-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600 }
+.sidebar-item .icon { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0 }
+.sidebar-badge {
+  margin-inline-start: auto;
+  background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 99px;
+  min-width: 20px; text-align: center;
+  white-space: nowrap; letter-spacing: .3px;
+  flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+[dir="ltr"] .main { margin-left: var(--sidebar-w) }
+[dir="rtl"] .main { margin-right: var(--sidebar-w) }
+.main {
+  margin-top: var(--topbar-h);
+  padding: 28px 32px 60px;
+  max-width: 1060px;
+  min-height: calc(100vh - var(--topbar-h));
+  transition: margin .3s;
+  overflow-x: hidden;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 18px; border-radius: var(--radius-xs);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid transparent; transition: all .15s;
+  white-space: nowrap; line-height: 1.4;
+}
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent) }
+.btn-primary:hover { background: var(--accent-light) }
+.btn-secondary { background: var(--input-bg); color: var(--text); border-color: var(--input-border) }
+.btn-secondary:hover { background: var(--accent-bg); border-color: var(--accent) }
+.btn-danger { background: var(--danger); color: #fff }
+.btn-danger:hover { opacity: .9 }
+.btn-success { background: var(--success); color: #fff }
+.btn-success:hover { opacity: .9 }
+.btn-warning { background: var(--warning); color: #fff }
+.btn-warning:hover { opacity: .9 }
+.btn-sm { padding: 6px 14px; font-size: 12px; border-radius: var(--radius-xs) }
+.btn-icon {
+  width: 36px; height: 36px; padding: 0; border-radius: var(--radius-xs);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap }
+.form-group { margin-bottom: 16px }
+.form-label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 5px;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.form-input {
+  width: 100%; padding: 9px 14px; border-radius: var(--radius-xs);
+  border: 1px solid var(--input-border); background: var(--input-bg);
+  color: var(--text); font-size: 14px;
+  transition: border-color .15s, box-shadow .15s;
+  outline: none; font-family: inherit;
+}
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg) }
+.form-input[type="number"] { padding-right: 8px }
+.input-with-max { display: flex; gap: 6px; align-items: stretch }
+.input-with-max .form-input { flex: 1; min-width: 0 }
+.form-select {
+  appearance: none; -webkit-appearance: none;
+  padding: 9px 36px 9px 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+[dir="rtl"] .form-select {
+  background-position: left 12px center;
+  padding: 9px 14px 9px 36px;
+}
+.tooltip-wrap { position: relative; display: inline-flex; align-items: center }
+.tooltip-icon {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent-bg); color: var(--accent);
+  font-size: 10px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: help; flex-shrink: 0;
+}
+.tooltip-text {
+  position: absolute; bottom: calc(100% + 8px);
+  left: 50%; transform: translateX(-50%);
+  background: var(--surface); color: var(--text);
+  padding: 8px 12px; border-radius: var(--radius-xs);
+  font-size: 12px; font-weight: 400; white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  border: 1px solid var(--glass-border);
+  pointer-events: none; opacity: 0;
+  transition: opacity .15s; z-index: 9999;
+}
+.tooltip-wrap:hover .tooltip-text { opacity: 1 }
+.info-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;
+}
+.info-item {
+  padding: 14px 16px; border-radius: var(--radius-sm);
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+}
+.info-item .label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text-secondary); margin-bottom: 3px;
+}
+.info-item .value { font-size: 18px; font-weight: 700; color: var(--text) }
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px }
+.data-table thead th {
+  background: var(--accent-bg); color: var(--accent);
+  font-weight: 700; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .5px; padding: 10px 14px; text-align: start;
+  position: sticky; top: 0; z-index: 1;
+}
+.data-table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--input-border); transition: background .15s }
+.data-table tbody tr:hover { background: var(--accent-bg) }
+.data-table tbody tr:last-child td { border-bottom: none }
+.data-table thead th:first-child { border-radius: var(--radius-xs) 0 0 0 }
+.data-table thead th:last-child { border-radius: 0 var(--radius-xs) 0 0 }
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 10px; border-radius: 99px;
+  font-size: 11px; font-weight: 600;
+}
+.tag-success { background: rgba(5,150,105,.12); color: var(--success) }
+.tag-warning { background: rgba(217,119,6,.12); color: var(--warning); box-shadow: 0 0 6px rgba(217,119,6,.25) }
+.tag-danger { background: rgba(220,38,38,.12); color: var(--danger); box-shadow: 0 0 6px rgba(220,38,38,.3) }
+.tag-info { background: var(--accent-bg); color: var(--accent) }
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.show { display: flex }
+.modal {
+  width: 100%; max-width: 720px; max-height: 85vh;
+  border-radius: var(--radius); overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h3 { font-size: 16px; font-weight: 700 }
+.modal-body { padding: 24px; overflow-y: auto; flex: 1 }
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--glass-border);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+.section { display: none }
+.section.active { display: block }
+.section-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; letter-spacing: -.3px }
+.section-desc { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6 }
+.card-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+.subsection-title {
+  font-size: 15px; font-weight: 700; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.glow-highlight {
+  animation: glowPulse 1.5s ease-in-out 2;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 16px var(--glow) !important;
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 8px var(--glow) }
+  50% { box-shadow: 0 0 24px var(--glow) }
+}
+.toast-container {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column-reverse; gap: 8px;
+}
+[dir="rtl"] .toast-container { right: auto; left: 20px }
+.toast {
+  padding: 12px 20px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500; color: #fff;
+  animation: toastIn .3s ease;
+  min-width: 240px; max-width: 400px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+}
+.toast-success { background: var(--success) }
+.toast-error { background: var(--danger) }
+.toast-warning { background: var(--warning) }
+.toast-info { background: var(--accent) }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+.fullscreen-center {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 32px;
+}
+.upload-card { width: 100%; max-width: 480px; text-align: center; padding: 48px 40px }
+.upload-card h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px }
+.upload-card p { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; line-height: 1.6 }
+.dropzone {
+  border: 2px dashed var(--input-border); border-radius: var(--radius);
+  padding: 40px 24px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent); background: var(--accent-bg);
+}
+.dropzone-icon { font-size: 40px; margin-bottom: 12px }
+.dropzone-text { font-size: 14px; color: var(--text-secondary) }
+.dropzone-text strong { color: var(--text) }
+.agreement-card { width: 100%; max-width: 560px; padding: 40px }
+.agreement-card h2 { font-size: 22px; font-weight: 800; margin-bottom: 16px }
+.agreement-list { text-align: start; margin: 16px 0 28px; padding: 0 0 0 20px }
+[dir="rtl"] .agreement-list { padding: 0 20px 0 0 }
+.agreement-list li { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.5 }
+.diff-container { max-height: 50vh; overflow-y: auto }
+.diff-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px; padding: 8px 12px;
+  border-bottom: 1px solid var(--input-border);
+  font-size: 13px; align-items: center;
+}
+.diff-row:hover { background: var(--accent-bg) }
+.diff-path {
+  font-family: 'SF Mono', Menlo, monospace; font-size: 12px;
+  color: var(--text-secondary); word-break: break-all;
+}
+.diff-old { color: var(--danger); font-weight: 600 }
+.diff-new { color: var(--success); font-weight: 600 }
+.raw-editor {
+  width: 100%; min-height: 400px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 1.5; padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg); color: var(--text); resize: vertical;
+}
+.lang-picker { position: relative }
+.lang-picker-btn { display: flex; align-items: center; gap: 6px; cursor: pointer; height: 36px }
+.lang-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 300px; max-height: 360px; overflow: hidden;
+  border-radius: var(--radius); z-index: 200;
+  display: none; flex-direction: column;
+}
+[dir="rtl"] .lang-dropdown { right: auto; left: 0 }
+.lang-dropdown.show { display: flex }
+.lang-search {
+  padding: 10px 14px; border: none;
+  border-bottom: 1px solid var(--glass-border);
+  background: transparent; color: var(--text);
+  font-size: 13px; outline: none; font-family: inherit;
+}
+.lang-list { overflow-y: auto; flex: 1; padding: 6px }
+.lang-group-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-secondary);
+  padding: 8px 10px 4px; user-select: none;
+}
+.lang-option {
+  padding: 7px 12px; border-radius: var(--radius-xs);
+  cursor: pointer; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.lang-option:hover { background: var(--accent-bg) }
+.lang-option.active { background: var(--accent-bg); color: var(--accent); font-weight: 600 }
+.lang-option .native { color: var(--text-secondary); font-size: 12px }
+.log-entry {
+  display: flex; align-items: start; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius-xs);
+  margin-bottom: 6px; font-size: 13px;
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+}
+.log-risk { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px }
+.log-risk-LOW { background: var(--success) }
+.log-risk-MED { background: var(--warning) }
+.log-risk-HIGH { background: var(--danger) }
+.stat-edit-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--input-border);
+}
+.stat-edit-row:last-child { border-bottom: none }
+.stat-label { flex: 1; font-size: 13px; font-weight: 500 }
+.stat-value { width: 140px }
+/* ── Mode colors ── */
+.mode-inspect { color: var(--success) }
+.mode-cosmetic { color: var(--warning) }
+.mode-experimental { color: var(--danger) }
+.tag-mode-inspect { background: rgba(5,150,105,.12); color: var(--success); border: 1px solid rgba(5,150,105,.25) }
+.tag-mode-cosmetic { background: rgba(217,119,6,.12); color: var(--warning); border: 1px solid rgba(217,119,6,.25) }
+.tag-mode-experimental { background: rgba(220,38,38,.12); color: var(--danger); border: 1px solid rgba(220,38,38,.25) }
+.section-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px }
+.section-header .section-title { margin: 0 }
+.section-header .section-mode-tag { order: 10 }
+.section-mode-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: .5px }
+/* ── Glass buttons ── */
+.btn {
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.18);
+  text-shadow: 0 1px 1px rgba(0,0,0,.06);
+}
+.btn-primary { background: rgba(79,70,229,.75); border-color: rgba(79,70,229,.3) }
+.btn-primary:hover { background: rgba(79,70,229,.9) }
+.btn-success { background: rgba(5,150,105,.75); border-color: rgba(5,150,105,.3) }
+.btn-success:hover { background: rgba(5,150,105,.9) }
+.btn-warning { background: rgba(217,119,6,.75); border-color: rgba(217,119,6,.3) }
+.btn-warning:hover { background: rgba(217,119,6,.9) }
+.btn-danger { background: rgba(220,38,38,.75); border-color: rgba(220,38,38,.3) }
+.btn-danger:hover { background: rgba(220,38,38,.9) }
+.btn-secondary { background: var(--glass-bg); border-color: var(--glass-border); color: var(--text) }
+.btn-secondary:hover { background: var(--accent-bg); border-color: var(--accent) }
+[data-theme="dark"] .btn { border-color: rgba(255,255,255,.1); text-shadow: 0 1px 2px rgba(0,0,0,.3) }
+[data-theme="dark"] .btn-primary { background: rgba(79,70,229,.6) }
+[data-theme="dark"] .btn-success { background: rgba(5,150,105,.6) }
+[data-theme="dark"] .btn-warning { background: rgba(217,119,6,.6) }
+[data-theme="dark"] .btn-danger { background: rgba(220,38,38,.6) }
+/* ── Warning banner ── */
+.warning-banner {
+  display: flex; align-items: start; gap: 10px; padding: 12px 16px;
+  border-radius: var(--radius-xs); margin-bottom: 16px; font-size: 12px; line-height: 1.5;
+  border: 1px solid rgba(217,119,6,.3); background: rgba(217,119,6,.08); color: var(--warning);
+}
+.warning-banner svg { flex-shrink: 0; margin-top: 1px }
+.danger-banner {
+  display: flex; align-items: start; gap: 10px; padding: 12px 16px;
+  border-radius: var(--radius-xs); margin-bottom: 16px; font-size: 12px; line-height: 1.5;
+  border: 1px solid rgba(220,38,38,.3); background: rgba(220,38,38,.08); color: var(--danger);
+}
+.danger-banner svg { flex-shrink: 0; margin-top: 1px }
+/* ── SVG icons ── */
+.icon svg { vertical-align: middle }
+.sidebar-item .icon { display: inline-flex; align-items: center; justify-content: center; width: 20px }
+.logo-link { cursor: pointer; text-decoration: none; color: inherit }
+.logo-link:hover { opacity: .8 }
+/* ── Banner glow animation ── */
+@keyframes bannerGlow {
+  0%, 100% { box-shadow: inset 0 0 4px rgba(217,119,6,.15), 0 0 6px rgba(217,119,6,.1) }
+  50% { box-shadow: inset 0 0 8px rgba(217,119,6,.25), 0 0 14px rgba(217,119,6,.2) }
+}
+@keyframes dangerGlow {
+  0%, 100% { box-shadow: inset 0 0 4px rgba(220,38,38,.15), 0 0 6px rgba(220,38,38,.1) }
+  50% { box-shadow: inset 0 0 8px rgba(220,38,38,.25), 0 0 14px rgba(220,38,38,.2) }
+}
+.warning-banner { animation: bannerGlow 2.5s ease-in-out infinite }
+.danger-banner { animation: dangerGlow 2.5s ease-in-out infinite }
+/* ── Hash config lock ── */
+.hash-locked { position: relative }
+.hash-locked .hash-content { filter: blur(5px); pointer-events: none; user-select: none; transition: filter .3s }
+.hash-unlock-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  z-index: 2; padding: 20px; border-radius: var(--radius);
+}
+.hash-unlock-box {
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+  border-radius: var(--radius); padding: 28px; text-align: center;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.12);
+}
+.hash-unlock-box label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; justify-content: center }
+/* ── Inspect warning modal ── */
+.inspect-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.inspect-modal-overlay.show { display: flex }
+.inspect-modal {
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+  border-radius: var(--radius); padding: 36px; text-align: center; max-width: 440px; width: 100%;
+  box-shadow: 0 16px 48px rgba(0,0,0,.25); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.inspect-modal .inspect-modal-icon { font-size: 40px; margin-bottom: 16px; color: var(--warning) }
+.inspect-modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 10px; color: var(--warning) }
+.inspect-modal p { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6 }
+.inspect-modal .btn-group { justify-content: center }
+/* ── Inspect mode field locking ── */
+.section.edit-locked input,
+.section.edit-locked select { opacity: .4; pointer-events: none }
+.section.edit-locked textarea { opacity: .4; pointer-events: none }
+.section.edit-locked .btn:not(.btn-secondary) { opacity: .5; cursor: not-allowed }
+.section.edit-locked .form-select { opacity: .4; pointer-events: none }
+.section.edit-locked .raw-editor { opacity: .5; min-height: 200px }
+.section.edit-locked .raw-guidance { opacity: .6 }
+/* ── Save file guide ── */
+.guide-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; text-align: start }
+.guide-card {
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+  border-radius: var(--radius-sm); padding: 16px; position: relative;
+}
+.guide-card.recommended { border-color: var(--accent); box-shadow: 0 0 12px var(--glow) }
+.guide-badge {
+  position: absolute; top: -8px; right: 12px; background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+}
+[dir="rtl"] .guide-badge { right: auto; left: 12px }
+.guide-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px }
+.guide-card ol { font-size: 12px; color: var(--text-secondary); padding-left: 18px; line-height: 1.8 }
+[dir="rtl"] .guide-card ol { padding-left: 0; padding-right: 18px }
+/* ── Consistent sizing ── */
+.info-item { min-height: 72px; display: flex; flex-direction: column; justify-content: center }
+.card-grid .glass-card { min-height: 180px }
+.data-table { width: 100% }
+.data-table tbody td { vertical-align: middle; word-break: break-word }
+.data-table thead th:first-child { width: 60px }
+.data-table thead th:nth-child(2) { width: auto }
+.data-table thead th:nth-child(3) { width: 160px }
+.data-table thead th:last-child { width: 180px }
+.btn-group { align-items: center }
+.stat-value { min-width: 180px }
+.stat-value .form-input { min-width: 0; font-size: 14px; font-weight: 600 }
+/* ── Settings section ── */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px }
+.settings-card { min-height: 120px }
+.settings-card .settings-label {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text-secondary); margin-bottom: 12px;
+}
+.theme-options { display: flex; gap: 8px; flex-wrap: wrap }
+.theme-option {
+  padding: 10px 18px; border-radius: var(--radius-xs); cursor: pointer;
+  border: 1px solid var(--input-border); background: var(--input-bg);
+  font-size: 13px; font-weight: 500; transition: all .15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.theme-option:hover { border-color: var(--accent); background: var(--accent-bg) }
+.theme-option.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: 600 }
+/* ── Raw editor guidance ── */
+.raw-guidance {
+  background: var(--accent-bg); border: 1px solid rgba(79,70,229,.2);
+  border-radius: var(--radius-xs); padding: 12px 16px; margin-bottom: 16px;
+  font-size: 12px; line-height: 1.6; color: var(--text-secondary);
+}
+.raw-guidance strong { color: var(--text); font-weight: 600 }
+.raw-guidance ul { margin: 6px 0 0; padding-left: 16px }
+[dir="rtl"] .raw-guidance ul { padding-left: 0; padding-right: 16px }
+/* ── Z-index fixes ── */
+.info-item { position: relative; z-index: 0 }
+.topbar { z-index: 100 }
+.tooltip-text { z-index: 9999 }
+.toast-container { z-index: 9999 }
+.lang-dropdown { z-index: 200 }
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); width: 280px; z-index: 95 }
+  [dir="rtl"] .sidebar { transform: translateX(100%) }
+  .sidebar.open { transform: translateX(0) }
+  .main { margin-left: 0 !important; margin-right: 0 !important; padding: 20px 16px 60px; max-width: 100% }
+  .info-grid { grid-template-columns: 1fr 1fr }
+  .card-grid { grid-template-columns: 1fr }
+  .modal { max-width: 100% }
+  .diff-row { grid-template-columns: 1fr; gap: 4px }
+  .guide-cards { grid-template-columns: 1fr }
+  .settings-grid { grid-template-columns: 1fr }
+  .topbar { padding: 0 12px; gap: 8px }
+  .topbar .logo-link { font-size: 14px }
+  .topbar-actions { gap: 4px }
+  .topbar-actions .btn-sm { padding: 4px 8px; font-size: 11px }
+  .topbar-actions .form-select { font-size: 12px !important; padding: 4px 24px 4px 6px !important; min-width: 0 }
+  #modeTag { display: none }
+  .data-table { table-layout: auto }
+  .data-table thead th:first-child { width: auto }
+  .data-table thead th:nth-child(3) { width: auto }
+  .data-table thead th:last-child { width: auto }
+  .stat-value { min-width: 120px }
+  .stat-edit-row { flex-wrap: wrap }
+  .stat-label { min-width: 100%; }
+  .section-title { font-size: 18px }
+  .raw-editor { min-height: 250px; font-size: 12px }
+  .upload-card { padding: 32px 20px }
+  .agreement-card { padding: 24px 20px }
+}
+@media (max-width: 480px) {
+  .info-grid { grid-template-columns: 1fr }
+  .topbar-actions .form-select { max-width: 90px }
+  .stat-value { min-width: 100% }
+}
+/* ── Mode tag blinking ── */
+@keyframes experimentalBlink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(220,38,38,.3) }
+  50% { opacity: 0.4; box-shadow: 0 0 16px rgba(220,38,38,.6) }
+}
+@keyframes cosmeticBlink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(217,119,6,.2) }
+  50% { opacity: 0.65; box-shadow: 0 0 12px rgba(217,119,6,.4) }
+}
+.section-mode-tag.tag-mode-experimental { animation: experimentalBlink 0.6s ease-in-out infinite }
+.section-mode-tag.tag-mode-cosmetic { animation: cosmeticBlink 2s ease-in-out infinite }
+/* ── Section readonly notice ── */
+.section-readonly-notice {
+  display: none; align-items: center; gap: 8px; padding: 10px 14px;
+  border-radius: var(--radius-xs); margin-bottom: 14px; font-size: 12px;
+  border: 1px solid rgba(5,150,105,.25); background: rgba(5,150,105,.06); color: var(--success);
+  cursor: pointer;
+}
+.section-readonly-notice svg { flex-shrink: 0 }
+.section.edit-locked .section-readonly-notice { display: flex }
+/* ── Experimental confirm modal ── */
+.exp-confirm-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.exp-confirm-overlay.show { display: flex }
+.exp-confirm-modal {
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+  border-radius: var(--radius); padding: 36px; text-align: center; max-width: 440px; width: 100%;
+  box-shadow: 0 16px 48px rgba(0,0,0,.25); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.exp-confirm-modal .exp-icon { font-size: 40px; margin-bottom: 16px; color: var(--danger) }
+.exp-confirm-modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 10px; color: var(--danger) }
+.exp-confirm-modal p { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6 }
+/* ── Raw editor section assist ── */
+.raw-assist-panel { display: grid; grid-template-columns: 200px 1fr; gap: 12px; }
+.raw-nav {
+  max-height: 500px; overflow-y: auto; background: var(--glass-card);
+  border: 1px solid var(--glass-card-border); border-radius: var(--radius-sm); padding: 8px;
+}
+.raw-nav-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 6px 10px;
+  margin-bottom: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text-secondary);
+}
+.raw-nav-header button { font-size: 10px }
+.raw-nav-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  border-radius: var(--radius-xs); cursor: pointer; font-size: 12px;
+  color: var(--text-secondary); transition: all .15s;
+}
+.raw-nav-item:hover { background: var(--accent-bg); color: var(--text) }
+.raw-nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600 }
+.raw-nav-item .raw-nav-icon { display: inline-flex; width: 16px; font-size: 14px }
+.raw-nav-desc {
+  font-size: 10px; color: var(--text-secondary); margin-top: 2px; line-height: 1.3;
+  max-height: 0; overflow: hidden; transition: max-height .2s;
+}
+.raw-nav.show-all .raw-nav-desc { max-height: 40px }
+.raw-nav.show-all .raw-nav-item {
+  background: var(--accent-bg); border-left: 2px solid var(--accent); margin-bottom: 2px;
+}
+[dir="rtl"] .raw-nav.show-all .raw-nav-item { border-left: none; border-right: 2px solid var(--accent) }
+@media (max-width: 768px) {
+  .raw-assist-panel { grid-template-columns: 1fr }
+  .raw-nav { max-height: 200px }
+}
+/* ── Save guide interactive flow ── */
+.save-guide-flow { text-align: center; margin-top: 20px }
+.save-guide-link {
+  color: var(--accent); cursor: pointer; font-size: 13px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.save-guide-link:hover { opacity: .8 }
+.save-guide-options { display: flex; justify-content: center; gap: 16px; margin-top: 16px }
+.save-guide-option {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 24px 32px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--glass-card); border: 1px solid var(--glass-card-border);
+  transition: all .15s; min-width: 120px;
+}
+.save-guide-option:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--glow) }
+.save-guide-option .guide-os-icon { font-size: 28px; line-height: 1 }
+.save-guide-option .guide-os-label { font-size: 13px; font-weight: 600 }
+.save-guide-detail {
+  text-align: start; margin-top: 16px; background: var(--glass-card);
+  border: 1px solid var(--glass-card-border); border-radius: var(--radius-sm); padding: 20px;
+}
+.save-guide-detail h4 { font-size: 15px; font-weight: 700; margin-bottom: 10px }
+.save-guide-detail ol { font-size: 13px; color: var(--text-secondary); padding-left: 20px; line-height: 1.9 }
+[dir="rtl"] .save-guide-detail ol { padding-left: 0; padding-right: 20px }
+.save-guide-back {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+  color: var(--accent); cursor: pointer; font-size: 12px; font-weight: 600;
+}
+.save-guide-back:hover { opacity: .8 }
+/* ── Section Counter ── */
+.section-counter {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--glass-card);
+  border: 1px solid var(--glass-card-border);
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-left: 8px;
+  white-space: nowrap;
+  transition: color .3s, border-color .3s;
+}
+.section-counter:empty { display: none }
+.section-counter.complete { color: var(--success); border-color: rgba(5,150,105,.3) }
+.sidebar-badge.complete { background: var(--success); box-shadow: 0 0 8px rgba(5,150,105,.35) }
+/* ── Progress bar ── */
+.progress-bar {
+  display: inline-flex; align-items: center; gap: 8px; vertical-align: middle;
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+}
+.progress-track {
+  width: 80px; height: 6px; border-radius: 4px;
+  background: var(--input-border); overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 4px;
+  background: var(--accent);
+  transition: width .4s ease;
+}
+
+/* ── Hash config lock fix ── */
+#hashLockWrapper { max-width: 480px }
+</style>
+</head>
+<body>
+
+<!-- Agreement Screen -->
+<div id="agreementScreen" class="fullscreen-center">
+<div class="agreement-card glass-card">
+<h2 id="t_agreeTitle">Disclaimer &amp; Legal Notice</h2>
+<p id="t_agreeDesc" style="color:var(--text-secondary);font-size:14px;line-height:1.6">This tool is provided strictly for educational and personal use. By proceeding, you acknowledge and agree to the following:</p>
+<ul class="agreement-list">
+<li id="t_agree1">This tool inspects and modifies local save data files stored on your device.</li>
+<li id="t_agree2">Modifying save data may cause unexpected game behaviour, data corruption, progress loss, or account restrictions.</li>
+<li id="t_agree3">You accept full and sole responsibility for any modifications made to your save files.</li>
+<li id="t_agree4">This tool is not affiliated with, endorsed by, or connected to Imangi Studios or any game developer or publisher.</li>
+<li id="t_agree5">No warranty of any kind is provided. This software is offered "as is" without guarantees of functionality, accuracy, or fitness for any purpose.</li>
+<li id="t_agree6">The developers of this tool accept no liability for any damages, losses, or consequences resulting from its use.</li>
+<li id="t_agree7">Do not use this tool to gain unfair advantages in competitive or online environments. Misuse may violate terms of service.</li>
+<li id="t_agree8">You are solely responsible for ensuring your use complies with applicable laws and terms of service.</li>
+</ul>
+<p style="color:var(--text-secondary);font-size:11px;line-height:1.5;margin-bottom:20px;text-align:start" id="t_agreeLegal">By clicking the button below, you confirm that you have read, understood, and agreed to all the terms above. You acknowledge that you use this tool entirely at your own risk.</p>
+<button class="btn btn-primary" style="width:100%" onclick="acceptAgreement()" id="t_agreeBtn">I Understand, Accept All Risks &amp; Proceed</button>
+</div>
+</div>
+
+<!-- Upload Screen -->
+<div id="uploadScreen" class="fullscreen-center" style="display:none">
+<div class="upload-card glass-card">
+<h1 id="t_uploadTitle">Temple Run 2 Decrypter</h1>
+<p id="t_uploadDesc">Upload your save data file to inspect, analyze, and optionally edit its contents.</p>
+<div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+<div class="dropzone-icon" id="dropzoneIcon"></div>
+<div class="dropzone-text"><strong id="t_dropBold">Click to upload</strong> <span id="t_dropOr">or drag and drop</span></div>
+<div style="font-size:12px;color:var(--text-secondary);margin-top:6px" id="t_dropHint">gamedata.txt</div>
+</div>
+<input type="file" id="fileInput" name="fileInput" accept=".txt,.json" style="display:none">
+<div id="uploadError" style="color:var(--danger);margin-top:14px;font-size:13px;display:none"></div>
+<div style="margin-top:20px;display:flex;justify-content:center;gap:8px">
+<div class="lang-picker">
+<button class="btn btn-secondary btn-sm lang-picker-btn" onclick="toggleLangDropdown(event)" id="langPickerBtn"><span class="lp-icon"></span> English</button>
+<div class="lang-dropdown glass" id="langDropdown">
+<input type="text" class="lang-search" id="langSearch" name="langSearch" placeholder="Search languages..." oninput="filterLangs(this.value)">
+<div class="lang-list" id="langList"></div>
+</div>
+</div>
+</div>
+<div id="saveGuide" class="guide-cards"></div>
+</div>
+</div>
+
+<!-- App Screen -->
+<div id="appScreen" style="display:none">
+<div class="topbar glass">
+<div style="display:flex;align-items:center;gap:14px">
+<button class="btn btn-icon btn-secondary" id="menuToggle" onclick="toggleSidebar()" style="display:none" title="Menu"><span id="menuIcon"></span></button>
+<a class="logo-link" onclick="goHome()" id="t_logo">Temple Run 2 Decrypter</a>
+<span class="tag section-mode-tag tag-mode-inspect" id="modeTag">INSPECT</span>
+</div>
+<div class="topbar-actions">
+<select class="form-input form-select" id="modeSelect" name="modeSelect" style="width:auto;font-size:13px;padding:6px 32px 6px 10px" onchange="setMode(this.value)">
+<option value="inspect" id="t_modeInspect">Inspect</option>
+<option value="cosmetic" id="t_modeCosmetic">Cosmetic</option>
+<option value="experimental" id="t_modeExperimental">Experimental</option>
+</select>
+<button class="btn btn-secondary btn-sm" onclick="showDiff()" id="t_diffBtn">Changes</button>
+<button class="btn btn-success btn-sm" onclick="downloadSave()" id="t_downloadBtn">Download</button>
+</div>
+</div>
+
+<!-- Sidebar -->
+<nav class="sidebar glass" id="sidebar">
+<div class="sidebar-group">
+<div class="sidebar-group-title" id="t_sgOverview">Overview</div>
+<div class="sidebar-item active" onclick="navTo('overview',this)"><span class="icon" id="si_overview"></span><span id="t_navOverview">Overview</span></div>
+<div class="sidebar-item" onclick="navTo('meta',this)"><span class="icon" id="si_meta"></span><span id="t_navMeta">Meta Info</span></div>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-title" id="t_sgEconomy">Economy</div>
+<div class="sidebar-item" onclick="navTo('economy',this)"><span class="icon" id="si_economy"></span><span id="t_navEconomy">Currency</span></div>
+<div class="sidebar-item" onclick="navTo('potions',this)"><span class="icon" id="si_potions"></span><span id="t_navPotions">Potions</span></div>
+<div class="sidebar-item" onclick="navTo('stats',this)"><span class="icon" id="si_stats"></span><span id="t_navStats">Statistics</span></div>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-title" id="t_sgCollection">Collection</div>
+<div class="sidebar-item" onclick="navTo('characters',this)"><span class="icon" id="si_characters"></span><span id="t_navChars">Characters</span><span class="sidebar-badge" id="charBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('pets',this)"><span class="icon" id="si_pets"></span><span id="t_navPets">Pets</span><span class="sidebar-badge" id="petBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('hats',this)"><span class="icon" id="si_hats"></span><span id="t_navHats">Hats</span><span class="sidebar-badge" id="hatBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('collectables',this)"><span class="icon" id="si_collectables"></span><span id="t_navCollectables">Collectables</span><span class="sidebar-badge" id="collectBadge">0</span></div>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-title" id="t_sgUpgrades">Upgrades</div>
+<div class="sidebar-item" onclick="navTo('artifacts',this)"><span class="icon" id="si_artifacts"></span><span id="t_navArtifacts">Artifacts</span><span class="sidebar-badge" id="artBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('powers',this)"><span class="icon" id="si_powers"></span><span id="t_navPowers">Powers</span><span class="sidebar-badge" id="powBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('perks',this)"><span class="icon" id="si_perks"></span><span id="t_navPerks">Perks</span><span class="sidebar-badge" id="perkBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('regions',this)"><span class="icon" id="si_regions"></span><span id="t_navRegions">Regions</span><span class="sidebar-badge" id="regBadge">0</span></div>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-title" id="t_sgProgress">Progress</div>
+<div class="sidebar-item" onclick="navTo('objectives',this)"><span class="icon" id="si_objectives"></span><span id="t_navObjectives">Objectives</span><span class="sidebar-badge" id="objBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('battlepass',this)"><span class="icon" id="si_battlepass"></span><span id="t_navBP">Battle Pass</span><span class="sidebar-badge" id="bpBadge">—</span></div>
+<div class="sidebar-item" onclick="navTo('daily',this)"><span class="icon" id="si_daily"></span><span id="t_navDaily">Daily Challenges</span><span class="sidebar-badge" id="dcBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('idolquest',this)"><span class="icon" id="si_idolquest"></span><span id="t_navIdolQuest">Idol Quest</span><span class="sidebar-badge" id="iqBadge">—</span></div>
+<div class="sidebar-item" onclick="navTo('dailytotems',this)"><span class="icon" id="si_dailytotems"></span><span id="t_navDailyTotems">Daily Totems</span><span class="sidebar-badge" id="dtBadge">—</span></div>
+<div class="sidebar-item" onclick="navTo('globalchallenges',this)"><span class="icon" id="si_globalchallenges"></span><span id="t_navGlobalChallenges">Global Challenges</span><span class="sidebar-badge" id="gcBadge">0</span></div>
+<div class="sidebar-item" onclick="navTo('minigame',this)"><span class="icon" id="si_minigame"></span><span id="t_navMinigame">Minigame</span><span class="sidebar-badge" id="mgBadge">0</span></div>
+</div>
+<div class="sidebar-group">
+<div class="sidebar-group-title" id="t_sgTools">Tools</div>
+<div class="sidebar-item" onclick="navTo('quickactions',this)"><span class="icon" id="si_quickactions"></span><span id="t_navQuick">Quick Actions</span></div>
+<div class="sidebar-item" onclick="navTo('hashconfig',this)"><span class="icon" id="si_hashconfig"></span><span id="t_navHash">Hash Config</span></div>
+<div class="sidebar-item" onclick="navTo('raweditor',this)"><span class="icon" id="si_raweditor"></span><span id="t_navRaw">Raw Editor</span></div>
+<div class="sidebar-item" onclick="navTo('editlog',this)"><span class="icon" id="si_editlog"></span><span id="t_navLog">Edit Log</span></div>
+<div class="sidebar-item" onclick="navTo('settings',this)"><span class="icon" id="si_settings"></span><span id="t_navSettings">Settings</span></div>
+</div>
+</nav>
+
+<!-- Main Content -->
+<div class="main" id="mainContent">
+
+<!-- Overview -->
+<div class="section active" id="sec-overview">
+<div class="section-header"><h2 class="section-title" id="t_overviewTitle">Overview</h2><span class="tag section-mode-tag" id="secMode_overview"></span></div>
+<p class="section-desc" id="t_overviewDesc">Quick summary of your save file.</p>
+<div class="info-grid" id="overviewGrid"></div>
+<div id="validationBox" style="margin-top:20px"></div>
+</div>
+
+<!-- Meta -->
+<div class="section" id="sec-meta">
+<div class="section-header"><h2 class="section-title" id="t_metaTitle">Meta Information</h2><span class="tag section-mode-tag" id="secMode_meta"></span></div>
+<p class="section-desc" id="t_metaDesc">Save file metadata and system info.</p>
+<div class="info-grid" id="metaGrid"></div>
+</div>
+
+<!-- Economy -->
+<div class="section" id="sec-economy">
+<div class="section-header"><h2 class="section-title" id="t_econTitle">Currency</h2><span class="tag section-mode-tag" id="secMode_economy"></span></div>
+<p class="section-desc" id="t_econDesc">View and edit in-game currency values.</p>
+<div class="warning-banner" id="econWarning"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg><span>Editing currency values may be detectable. Values that exceed lifetime totals will fail validation.</span></div>
+<div class="card-grid" id="econCards"></div>
+<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-danger btn-sm" onclick="editAction('max_all_currency')" title="Set all currencies to maximum" id="t_maxAllCurrency">Max All</button>
+<button class="btn btn-warning btn-sm" onclick="editAction('randomize_economy')" title="Randomises coins, gems, scrolls, keys, and lifetime totals to realistic values" id="t_randCurrency">Randomise Currency</button>
+</div>
+</div>
+
+<!-- Statistics -->
+<div class="section" id="sec-stats">
+<div class="section-header"><h2 class="section-title" id="t_statsTitle">Statistics</h2><span class="tag section-mode-tag" id="secMode_stats"></span></div>
+<p class="section-desc" id="t_statsDesc">Game statistics and lifetime records.</p>
+<div class="warning-banner" id="statsWarning"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg><span>Modifying statistics can cause validation errors. Decreasing lifetime values below current balance will auto-adjust your currency.</span></div>
+<div style="margin-bottom:16px"><button class="btn btn-warning btn-sm" onclick="editAction('randomize_stats')" title="Randomises high scores, distances, run counts, and lifetime collection stats" id="t_randStats">Randomise Stats</button></div>
+<div class="glass-card" id="statsCard"></div>
+<h3 class="subsection-title" style="margin-top:20px" id="t_streakTitle">Daily Streak</h3>
+<div class="glass-card" id="streakCard"></div>
+</div>
+
+<!-- Characters -->
+<div class="section" id="sec-characters">
+<div class="section-header"><h2 class="section-title" id="t_charsTitle">Characters</h2><span class="section-counter" id="charsCounter"></span><span class="tag section-mode-tag" id="secMode_characters"></span></div>
+<p class="section-desc" id="t_charsDesc">Manage your character collection.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('unlock_all_characters')" id="t_unlockAllChars">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('remove_all_characters')" id="t_removeAllChars">Remove All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="charsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Pets -->
+<div class="section" id="sec-pets">
+<div class="section-header"><h2 class="section-title" id="t_petsTitle">Pets</h2><span class="section-counter" id="petsCounter"></span><span class="tag section-mode-tag" id="secMode_pets"></span></div>
+<p class="section-desc" id="t_petsDesc">Manage your pet collection.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('unlock_all_pets')" id="t_unlockAllPets">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('remove_all_pets')" id="t_removeAllPets">Remove All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="petsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Hats -->
+<div class="section" id="sec-hats">
+<div class="section-header"><h2 class="section-title" id="t_hatsTitle">Hats</h2><span class="section-counter" id="hatsCounter"></span><span class="tag section-mode-tag" id="secMode_hats"></span></div>
+<p class="section-desc" id="t_hatsDesc">Equip accessories on your characters. Each hat requires a downloaded asset bundle. Use batch unlock to add hats gradually — load the game between batches so it can download the bundles.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<select class="form-input form-select" id="hatBatchSize" style="width:auto;font-size:12px;padding:4px 28px 4px 8px;display:inline-block;vertical-align:middle"><option value="5">5 hats</option><option value="10">10 hats</option><option value="20">20 hats</option><option value="50">50 hats</option></select>
+<button class="btn btn-primary btn-sm" onclick="editAction('unlock_hat_batch',{batchSize:parseInt(document.getElementById('hatBatchSize').value)})" id="t_unlockHatBatch">Unlock Next Batch</button>
+<button class="btn btn-success btn-sm" onclick="editAction('unlock_all_hats')" id="t_unlockAllHats">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('remove_all_hats')" id="t_removeAllHats">Remove All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="hatsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Collectables -->
+<div class="section" id="sec-collectables">
+<div class="section-header"><h2 class="section-title" id="t_collectTitle">Collectables</h2><span class="section-counter" id="collectCounter"></span><span class="tag section-mode-tag" id="secMode_collectables"></span></div>
+<p class="section-desc" id="t_collectDesc">Map collectibles — unlock prizes by completing sets.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('unlock_all_collectables')" id="t_unlockAllCollect">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('lock_all_collectables')" id="t_lockAllCollect">Lock All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="collectTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Artifacts -->
+<div class="section" id="sec-artifacts">
+<div class="section-header"><h2 class="section-title" id="t_artsTitle">Artifacts</h2><span class="section-counter" id="artsCounter"></span><span class="tag section-mode-tag" id="secMode_artifacts"></span></div>
+<p class="section-desc" id="t_artsDesc">Permanent upgrade artifacts.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('unlock_all_artifacts')" id="t_unlockAllArts">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('remove_all_artifacts')" id="t_removeAllArts">Remove All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="artsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Powers -->
+<div class="section" id="sec-powers">
+<div class="section-header"><h2 class="section-title" id="t_powsTitle">Powers</h2><span class="section-counter" id="powsCounter"></span><span class="tag section-mode-tag" id="secMode_powers"></span></div>
+<p class="section-desc" id="t_powsDesc">Power-up abilities.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('unlock_all_powers')" id="t_unlockAllPows">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('remove_all_powers')" id="t_removeAllPows">Remove All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="powsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Regions -->
+<div class="section" id="sec-regions">
+<div class="section-header"><h2 class="section-title" id="t_regsTitle">Regions</h2><span class="section-counter" id="regsCounter"></span><span class="tag section-mode-tag" id="secMode_regions"></span></div>
+<p class="section-desc" id="t_regsDesc">World map regions.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('purchase_all_regions')" id="t_purchAllRegs">Unlock All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('unpurchase_all_regions')" id="t_unpurchAllRegs">Lock All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="regsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Objectives -->
+<div class="section" id="sec-objectives">
+<div class="section-header"><h2 class="section-title" id="t_objsTitle">Objectives</h2><span class="section-counter" id="objsCounter"></span><span class="tag section-mode-tag" id="secMode_objectives"></span></div>
+<p class="section-desc" id="t_objsDesc">Mission objectives and progress.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('complete_all_objectives')" id="t_completeObjs">Complete All</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('uncomplete_all_objectives')" id="t_uncompleteObjs">Reset All</button>
+</div>
+<div id="objsSummary" style="margin-bottom:16px"></div>
+<div style="overflow-x:auto"><table class="data-table" id="objsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Battle Pass -->
+<div class="section" id="sec-battlepass">
+<div class="section-header"><h2 class="section-title" id="t_bpTitle">Battle Pass</h2><span class="tag section-mode-tag" id="secMode_battlepass"></span></div>
+<p class="section-desc" id="t_bpDesc">Current battle pass status.</p>
+<div class="warning-banner"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg><span id="t_bpRunsWarn">Minimum 60 total runs required for battle pass access. If your run count is below 60, it will be automatically increased to 60 when completing the battle pass.</span></div>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('complete_battle_pass')" id="t_completeBP">Complete Battle Pass</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('reset_battle_pass')" id="t_resetBP">Reset Battle Pass</button>
+</div>
+<div class="glass-card" id="bpCard"><p style="color:var(--text-secondary)">No active battle pass.</p></div>
+</div>
+
+<!-- Daily Challenges -->
+<div class="section" id="sec-daily">
+<div class="section-header"><h2 class="section-title" id="t_dcTitle">Daily Challenges</h2><span class="tag" style="background:var(--accent-orange);color:#000;margin-left:8px">Server-Managed</span><span class="tag section-mode-tag" id="secMode_daily"></span></div>
+<p class="section-desc" id="t_dcDesc">Today's challenge progress. <em>Refreshed by the server each session — not editable.</em></p>
+<div style="overflow-x:auto"><table class="data-table" id="dcTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Perks -->
+<div class="section" id="sec-perks">
+<div class="section-header"><h2 class="section-title" id="t_perksTitle">Perks</h2><span class="section-counter" id="perksCounter"></span><span class="tag" style="background:var(--accent-orange);color:#000;margin-left:8px">Server-Managed</span><span class="tag section-mode-tag" id="secMode_perks"></span></div>
+<p class="section-desc" id="t_perksDesc">Permanent perk upgrades. <em>Server-managed — not editable via save file.</em></p>
+<div style="overflow-x:auto"><table class="data-table" id="perksTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Potions -->
+<div class="section" id="sec-potions">
+<div class="section-header"><h2 class="section-title" id="t_potionsTitle">Potions</h2><span class="tag section-mode-tag" id="secMode_potions"></span></div>
+<p class="section-desc" id="t_potionsDesc">Consumable power-ups available for runs.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('max_potions')" id="t_maxPotions">Max All (999)</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('reset_potions')" id="t_resetPotions">Reset All</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="potionsTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Idol Quest -->
+<div class="section" id="sec-idolquest">
+<div class="section-header"><h2 class="section-title" id="t_idolQuestTitle">Idol Quest</h2><span class="tag" style="background:var(--accent-orange);color:#000;margin-left:8px">Server-Managed</span><span class="tag section-mode-tag" id="secMode_idolquest"></span></div>
+<p class="section-desc" id="t_idolQuestDesc">Weekly featured run challenge. <em>Server-tracked — not editable via save file.</em></p>
+<div class="glass-card" id="iqCard"><p style="color:var(--text-secondary)">No idol quest data.</p></div>
+</div>
+
+<!-- Daily Totems -->
+<div class="section" id="sec-dailytotems">
+<div class="section-header"><h2 class="section-title" id="t_dailyTotemsTitle">Daily Totems</h2><span class="tag" style="background:var(--accent-orange);color:#000;margin-left:8px">Server-Managed</span><span class="tag section-mode-tag" id="secMode_dailytotems"></span></div>
+<p class="section-desc" id="t_dailyTotemsDesc">Find totems on the course. <em>Refreshed by the server each session — not editable.</em></p>
+<div class="glass-card" id="dtCard"><p style="color:var(--text-secondary)">No daily totem data.</p></div>
+</div>
+
+<!-- Global Challenges -->
+<div class="section" id="sec-globalchallenges">
+<div class="section-header"><h2 class="section-title" id="t_globalChallengesTitle">Global Challenges</h2><span class="tag" style="background:var(--accent-orange);color:#000;margin-left:8px">Server-Managed</span><span class="tag section-mode-tag" id="secMode_globalchallenges"></span></div>
+<p class="section-desc" id="t_globalChallengesDesc">Community-wide challenge events. <em>Entirely server-managed — not editable via save file.</em></p>
+<div style="overflow-x:auto"><table class="data-table" id="gcTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Minigame -->
+<div class="section" id="sec-minigame">
+<div class="section-header"><h2 class="section-title" id="t_minigameTitle">Minigame</h2><span class="tag section-mode-tag" id="secMode_minigame"></span></div>
+<p class="section-desc" id="t_minigameDesc">In-game minigame tier completion status.</p>
+<div class="btn-group" style="margin-bottom:16px">
+<button class="btn btn-success btn-sm" onclick="editAction('complete_minigame')" id="t_completeMG">Complete All Tiers</button>
+<button class="btn btn-danger btn-sm" onclick="editAction('reset_minigame')" id="t_resetMG">Reset All Tiers</button>
+</div>
+<div style="overflow-x:auto"><table class="data-table" id="mgTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section" id="sec-quickactions">
+<div class="section-header"><h2 class="section-title" id="t_qaTitle">Quick Actions</h2><span class="tag section-mode-tag" id="secMode_quickactions"></span></div>
+<p class="section-desc" id="t_qaDesc">Powerful batch operations. Use with caution.</p>
+<div class="danger-banner"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg><span>These actions make large-scale changes to your save file. Some changes may be detectable. Use at your own risk.</span></div>
+<div class="card-grid">
+<div class="glass-card" style="display:flex;flex-direction:column">
+<h3 style="font-size:15px;font-weight:700;margin-bottom:8px" id="t_qaMaxTitle">Max Account</h3>
+<p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex:1" id="t_qaMaxDesc">Unlock everything, max all currencies and statistics to high values.</p>
+<label for="maxConfirm" style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:12px;cursor:pointer">
+<input type="checkbox" id="maxConfirm" name="maxConfirm"> <span id="t_qaMaxWarn">I understand this makes changes obvious</span>
+</label>
+<button class="btn btn-danger" onclick="doMaxAccount()" id="t_qaMaxBtn" disabled>Max Everything</button>
+</div>
+<div class="glass-card" style="display:flex;flex-direction:column">
+<h3 style="font-size:15px;font-weight:700;margin-bottom:8px" id="t_qaRandTitle">Randomize Values</h3>
+<p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex:1" id="t_qaRandDesc">Randomises all currencies, lifetime totals, scores, distances, and run statistics to realistic values that look like natural gameplay.</p>
+<label for="randConfirm" style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:12px;cursor:pointer">
+<input type="checkbox" id="randConfirm" name="randConfirm"> <span id="t_qaRandWarn">I understand values will be overwritten</span>
+</label>
+<button class="btn btn-warning" onclick="doRandomize()" id="t_qaRandBtn" disabled>Randomize</button>
+</div>
+<div class="glass-card" style="display:flex;flex-direction:column">
+<h3 style="font-size:15px;font-weight:700;margin-bottom:8px" id="t_qaUnlockTitle">Unlock Everything</h3>
+<p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;flex:1" id="t_qaUnlockDesc">Unlock all characters, pets, hats, artifacts, powers, regions, objectives, potions, battle pass, and minigame. Server-managed features (perks, daily challenges, totems, streaks, idol quest, global challenges) are skipped.</p>
+<button class="btn btn-success" onclick="editAction('unlock_everything')" id="t_qaUnlockBtn">Unlock All</button>
+</div>
+</div>
+</div>
+
+<!-- Hash Config -->
+<div class="section" id="sec-hashconfig">
+<div class="section-header"><h2 class="section-title" id="t_hashTitle">Hash Configuration</h2><span class="tag section-mode-tag" id="secMode_hashconfig"></span></div>
+<p class="section-desc" id="t_hashDesc">Configure the hash key and algorithm for save integrity.</p>
+<div class="danger-banner"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg><span>Changing the hash key or algorithm may corrupt your save file. Only modify if you know what you are doing.</span></div>
+<div id="hashLockWrapper" class="hash-locked">
+<div class="hash-unlock-overlay" id="hashUnlockOverlay">
+<div class="hash-unlock-box">
+<div style="margin-bottom:12px;color:var(--danger)" id="hashLockIcon"></div>
+<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px" id="t_hashLockMsg">This section modifies critical save integrity data.</p>
+<label for="hashAcceptRisk"><input type="checkbox" id="hashAcceptRisk" name="hashAcceptRisk" onchange="toggleHashLock(this.checked)"> <span id="t_hashAcceptLabel">I accept the risks</span></label>
+</div>
+</div>
+<div class="hash-content">
+<div class="glass-card" style="max-width:480px">
+<div class="form-group">
+<label class="form-label" for="hashKeyInput" id="t_hashKeyLabel">Hash Key</label>
+<input class="form-input" type="text" id="hashKeyInput" name="hashKey" value="BonusItemProtoData">
+</div>
+<div class="form-group">
+<label class="form-label" for="hashAlgoInput" id="t_hashAlgoLabel">Algorithm</label>
+<select class="form-input form-select" id="hashAlgoInput" name="hashAlgo">
+<option value="md5_append">MD5 Append</option>
+<option value="md5_prepend">MD5 Prepend</option>
+<option value="hmac_md5">HMAC MD5</option>
+<option value="hmac_sha256">HMAC SHA256</option>
+</select>
+</div>
+<button class="btn btn-primary" onclick="saveHashConfig()" id="t_hashSaveBtn">Save</button>
+</div>
+</div><!-- end hash-locked -->
+</div>
+</div><!-- end sec-hashconfig -->
+
+<!-- Raw Editor -->
+<div class="section" id="sec-raweditor">
+<div class="section-header"><h2 class="section-title" id="t_rawTitle">Raw JSON Editor</h2><span class="tag section-mode-tag" id="secMode_raweditor"></span></div>
+<p class="section-desc" id="t_rawDesc">Direct JSON editing. Requires Experimental mode.</p>
+<div id="rawLockWrapper" class="hash-locked">
+<div class="hash-unlock-overlay" id="rawUnlockOverlay">
+<div class="hash-unlock-box">
+<div style="margin-bottom:12px;color:var(--danger)" id="rawLockIcon"></div>
+<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px" id="t_rawLockMsg">This section allows direct modification of raw save data.</p>
+<label for="rawAcceptRisk"><input type="checkbox" id="rawAcceptRisk" name="rawAcceptRisk" onchange="toggleRawLock(this.checked)"> <span id="t_rawAcceptLabel">I accept the risks</span></label>
+</div>
+</div>
+<div class="hash-content">
+<div class="danger-banner"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg><span>Editing raw JSON can break your save file. Only use this if you understand the save data structure.</span></div>
+<div class="raw-guidance"><strong>Quick Guide:</strong> Load the current save data as JSON, make your changes, then click Apply. <ul><li>Backup your original file before editing</li><li>Invalid JSON will be rejected automatically</li><li>Changes are validated against the hash on download</li><li>Only modify fields you understand</li></ul></div>
+<div class="btn-group" style="margin-bottom:12px">
+<button class="btn btn-secondary btn-sm" onclick="loadRaw()" id="t_rawLoadBtn">Load JSON</button>
+<button class="btn btn-primary btn-sm" onclick="saveRaw()" id="t_rawSaveBtn">Apply Changes</button>
+</div>
+<div class="raw-assist-panel" id="rawAssistPanel" style="display:none">
+<div class="raw-nav" id="rawNavPanel"></div>
+<textarea class="raw-editor" id="rawTextarea" name="rawJson" spellcheck="false" placeholder="Click Load JSON to view raw save data..."></textarea>
+</div>
+<textarea class="raw-editor" id="rawTextareaFallback" name="rawJsonFb" spellcheck="false" placeholder="Click Load JSON to view raw save data..." style="display:none"></textarea>
+</div>
+</div>
+</div>
+
+<!-- Edit Log -->
+<div class="section" id="sec-editlog">
+<div class="section-header"><h2 class="section-title" id="t_logTitle">Edit Log</h2><span class="tag section-mode-tag" id="secMode_editlog"></span></div>
+<p class="section-desc" id="t_logDesc">History of all modifications made in this session.</p>
+<div id="logEntries"><p style="color:var(--text-secondary);font-size:13px" id="t_logEmpty">No edits yet.</p></div>
+</div>
+
+<!-- Settings -->
+<div class="section" id="sec-settings">
+<div class="section-header"><h2 class="section-title" id="t_settingsTitle">Settings</h2></div>
+<p class="section-desc" id="t_settingsDesc">Appearance and language preferences.</p>
+<div class="settings-grid" id="settingsContent"></div>
+</div>
+
+</div><!-- end .main -->
+</div><!-- end appScreen -->
+
+<!-- Diff Modal -->
+<div class="modal-overlay" id="diffModal">
+<div class="modal glass">
+<div class="modal-header">
+<h3 id="t_diffTitle">Changes</h3>
+<button class="btn btn-icon btn-secondary" onclick="closeDiff()" aria-label="Close" title="Close">&times;</button>
+</div>
+<div class="modal-body">
+<div class="diff-container" id="diffContainer">
+<p style="color:var(--text-secondary)" id="t_diffEmpty">No changes detected.</p>
+</div>
+</div>
+<div class="modal-footer">
+<span id="diffCount" style="margin-right:auto;font-size:13px;color:var(--text-secondary)"></span>
+<button class="btn btn-secondary btn-sm" onclick="closeDiff()" id="t_diffCloseBtn">Close</button>
+</div>
+</div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Inspect Mode Warning Modal -->
+<div class="inspect-modal-overlay" id="inspectModal">
+<div class="inspect-modal">
+<div class="inspect-modal-icon" id="inspectModalIcon"></div>
+<h3 id="t_inspectWarnTitle">Inspect Mode Active</h3>
+<p id="t_inspectWarnDesc">Editing is disabled in Inspect mode. Switch to Cosmetic or Experimental mode to make changes to your save file.</p>
+<div class="btn-group">
+<button class="btn btn-warning" onclick="switchAndRetry()" id="t_inspectSwitchCos">Switch to Cosmetic</button>
+<button class="btn btn-secondary" onclick="closeInspectModal()" id="t_inspectDismiss">Dismiss</button>
+</div>
+</div>
+</div>
+
+<!-- Experimental Mode Confirm Modal -->
+<div class="exp-confirm-overlay" id="expConfirmModal">
+<div class="exp-confirm-modal">
+<div class="exp-icon" id="expConfirmIcon"></div>
+<h3 id="t_expConfirmTitle">Switch to Experimental Mode?</h3>
+<p id="t_expConfirmDesc">Experimental mode allows modifying all values including raw JSON. Incorrect changes may corrupt your save file beyond repair.</p>
+<div class="btn-group">
+<button class="btn btn-danger" onclick="confirmExperimental(true)" id="t_expConfirmYes">Yes, Switch</button>
+<button class="btn btn-secondary" onclick="confirmExperimental(false)" id="t_expConfirmNo">Cancel</button>
+</div>
+</div>
+</div>
+
+<script>
+let SID = null, A = null, currentSection = 'overview';
+const INT32_MAX = 2147483647;
+const SAFE_MAX = INT32_MAX - 2000000;
+
+/* ─── SVG Icons ─── */
+const IC = {
+  chart: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14h12M4 14V8M7 14V5M10 14V9M13 14V3"/></svg>',
+  file: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h5l3 3v9H4V2z"/><path d="M9 2v3h3"/></svg>',
+  coin: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v8M6 6h4M6 10h4" stroke-linecap="round"/></svg>',
+  stats: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="9" width="2" height="5" rx=".5"/><rect x="7" y="5" width="2" height="9" rx=".5"/><rect x="11" y="7" width="2" height="7" rx=".5"/></svg>',
+  user: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>',
+  paw: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><ellipse cx="5" cy="4.5" rx="1.3" ry="1.8"/><ellipse cx="11" cy="4.5" rx="1.3" ry="1.8"/><ellipse cx="3" cy="8.5" rx="1.2" ry="1.4"/><ellipse cx="13" cy="8.5" rx="1.2" ry="1.4"/><path d="M5 10.5c0 2 1.3 3 3 3s3-1 3-3-1.5-2.5-3-2.5-3 .5-3 2.5z"/></svg>',
+  hat: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L3 7h2v3h6V7h2L8 2z"/><rect x="2" y="11" width="12" height="2" rx="1"/></svg>',
+  diamond: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M8 2L2 8l6 6 6-6z"/></svg>',
+  bolt: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M9 1L4 9h4l-1 6 5-8H8z"/></svg>',
+  globe: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12"/></svg>',
+  target: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r=".5" fill="currentColor"/></svg>',
+  trophy: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6v5c0 2-1.5 3-3 3S5 9 5 7V2z"/><path d="M5 4H3c0 2 1 3 2 3M11 4h2c0 2-1 3-2 3M6 12h4M8 10v2"/></svg>',
+  calendar: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 1v3M11 1v3M2 7h12"/></svg>',
+  lock: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 016 0v2"/></svg>',
+  code: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg>',
+  list: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 4h8M5 8h8M5 12h8M2 4h.01M2 8h.01M2 12h.01"/></svg>',
+  sun: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.3 3.3l1.4 1.4M11.3 11.3l1.4 1.4M12.7 3.3l-1.4 1.4M4.7 11.3L3.3 12.7"/></svg>',
+  moon: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 9A5 5 0 117 3a4 4 0 006 6z"/></svg>',
+  gear: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.3 3.3l1 1M11.7 11.7l1 1M12.7 3.3l-1 1M4.3 11.7l-1 1"/></svg>',
+  upload: '<svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 26V10M14 16l6-6 6 6M6 28v4h28v-4"/></svg>',
+  dice: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="5.5" cy="5.5" r=".8" fill="currentColor"/><circle cx="10.5" cy="5.5" r=".8" fill="currentColor"/><circle cx="8" cy="8" r=".8" fill="currentColor"/><circle cx="5.5" cy="10.5" r=".8" fill="currentColor"/><circle cx="10.5" cy="10.5" r=".8" fill="currentColor"/></svg>',
+  check: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l4 4 6-7"/></svg>',
+  warn: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm-.5 5h1v4h-1V6zm0 5h1v1h-1v-1z"/></svg>',
+  menu: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>',
+  zap: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M9 1L4 9h4l-1 6 5-8H8z"/></svg>',
+  gem: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 5h10l-5 9zM3 5l2-3h6l2 3"/></svg>',
+  apple: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M11.2 4.1c-.7.8-1.8.7-1.8.7s-.2-1 .6-1.8c.7-.7 1.8-.7 1.8-.7s.1 1-.6 1.8zm-.9 1c-.6 0-1.2.4-1.6.4s-.9-.4-1.5-.4C6 5.1 4.8 6 4.8 8.2c0 1.4.5 2.9 1.2 3.8.5.7 1 1.3 1.5 1.3s.8-.4 1.5-.4 .9.4 1.5.4 1-.6 1.5-1.3c.3-.4.5-.9.6-1-.1-.1-1.5-.7-1.5-2.6 0-1.6 1.3-2.4 1.4-2.5-.8-1-1.9-1.2-2.2-1.2z"/></svg>',
+  android: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 6h9v5a1 1 0 01-1 1h-1v2.5a.75.75 0 01-1.5 0V12h-2v2.5a.75.75 0 01-1.5 0V12h-1a1 1 0 01-1-1V6zm-1.25.5a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5a.75.75 0 00-.75-.75zm11.5 0a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5a.75.75 0 00-.75-.75zM5.3 2.5l-.7-1.1a.25.25 0 01.4-.3l.7 1.1C6.3 1.7 7.1 1.5 8 1.5s1.7.2 2.3.7l.7-1.1a.25.25 0 01.4.3l-.7 1.1a3 3 0 011.3 2.5H4a3 3 0 011.3-2.5zM6.5 4a.5.5 0 100-1 .5.5 0 000 1zm3 0a.5.5 0 100-1 .5.5 0 000 1z"/></svg>',
+  arrowLeft: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>',
+  level: '<svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 14l4-4 3 3 5-7"/></svg>',
+};
+
+const SIDEBAR_ICONS = {
+  overview: IC.chart, meta: IC.file, economy: IC.coin, potions: IC.bolt, stats: IC.stats,
+  characters: IC.user, pets: IC.paw, hats: IC.hat, collectables: IC.gem, artifacts: IC.diamond,
+  powers: IC.bolt, perks: IC.level, regions: IC.globe, objectives: IC.target, battlepass: IC.trophy,
+  daily: IC.calendar, idolquest: IC.diamond, dailytotems: IC.target, globalchallenges: IC.globe,
+  minigame: IC.dice,
+  quickactions: IC.zap, hashconfig: IC.lock, raweditor: IC.code, editlog: IC.list,
+  settings: IC.gear,
+};
+
+function initIcons() {
+  for (const [key, svg] of Object.entries(SIDEBAR_ICONS)) {
+    const el = document.getElementById('si_' + key);
+    if (el) el.innerHTML = svg;
+  }
+  const dzi = document.getElementById('dropzoneIcon');
+  if (dzi) dzi.innerHTML = IC.upload;
+  const mi = document.getElementById('menuIcon');
+  if (mi) mi.innerHTML = IC.menu;
+  const hli = document.getElementById('hashLockIcon');
+  if (hli) hli.innerHTML = IC.lock;
+  const rli = document.getElementById('rawLockIcon');
+  if (rli) rli.innerHTML = IC.lock;
+  const imi = document.getElementById('inspectModalIcon');
+  if (imi) imi.innerHTML = IC.warn;
+  const eci = document.getElementById('expConfirmIcon');
+  if (eci) eci.innerHTML = IC.warn;
+  document.querySelectorAll('.lp-icon').forEach(el => { el.innerHTML = IC.globe; });
+  renderSaveGuide();
+}
+
+function updateModeIndicators() {
+  if (!A) return;
+  const m = A.mode || 'inspect';
+  const cls = 'tag section-mode-tag tag-mode-' + m;
+  const label = m.toUpperCase();
+  document.querySelectorAll('.section-mode-tag').forEach(el => {
+    el.className = cls; el.textContent = label;
+  });
+  const mt = document.getElementById('modeTag');
+  if (mt) { mt.className = 'tag section-mode-tag tag-mode-' + m; mt.textContent = label; }
+}
+
+/* ─── Language Data ─── */
+const LANGS = [
+  { group: "Americas", items: [
+    { code: "en", name: "English", native: "English", rtl: false },
+    { code: "en-US", name: "English (US)", native: "English (US)", rtl: false },
+    { code: "es", name: "Spanish", native: "Español", rtl: false },
+    { code: "es-419", name: "Spanish (Latin America)", native: "Español (Latinoamérica)", rtl: false },
+    { code: "pt", name: "Portuguese", native: "Português", rtl: false },
+    { code: "pt-BR", name: "Portuguese (Brazil)", native: "Português (Brasil)", rtl: false },
+    { code: "fr-CA", name: "French (Canada)", native: "Français (Canada)", rtl: false },
+  ]},
+  { group: "Europe", items: [
+    { code: "en-GB", name: "English (UK)", native: "English (UK)", rtl: false },
+    { code: "fr", name: "French", native: "Français", rtl: false },
+    { code: "de", name: "German", native: "Deutsch", rtl: false },
+    { code: "it", name: "Italian", native: "Italiano", rtl: false },
+    { code: "nl", name: "Dutch", native: "Nederlands", rtl: false },
+    { code: "pl", name: "Polish", native: "Polski", rtl: false },
+    { code: "ru", name: "Russian", native: "Русский", rtl: false },
+    { code: "uk", name: "Ukrainian", native: "Українська", rtl: false },
+    { code: "cs", name: "Czech", native: "Čeština", rtl: false },
+    { code: "sk", name: "Slovak", native: "Slovenčina", rtl: false },
+    { code: "hu", name: "Hungarian", native: "Magyar", rtl: false },
+    { code: "ro", name: "Romanian", native: "Română", rtl: false },
+    { code: "bg", name: "Bulgarian", native: "Български", rtl: false },
+    { code: "hr", name: "Croatian", native: "Hrvatski", rtl: false },
+    { code: "sr", name: "Serbian", native: "Српски", rtl: false },
+    { code: "sl", name: "Slovenian", native: "Slovenščina", rtl: false },
+    { code: "el", name: "Greek", native: "Ελληνικά", rtl: false },
+    { code: "da", name: "Danish", native: "Dansk", rtl: false },
+    { code: "no", name: "Norwegian", native: "Norsk", rtl: false },
+    { code: "sv", name: "Swedish", native: "Svenska", rtl: false },
+    { code: "fi", name: "Finnish", native: "Suomi", rtl: false },
+    { code: "et", name: "Estonian", native: "Eesti", rtl: false },
+    { code: "lv", name: "Latvian", native: "Latviešu", rtl: false },
+    { code: "lt", name: "Lithuanian", native: "Lietuvių", rtl: false },
+    { code: "ga", name: "Irish", native: "Gaeilge", rtl: false },
+    { code: "cy", name: "Welsh", native: "Cymraeg", rtl: false },
+    { code: "eu", name: "Basque", native: "Euskara", rtl: false },
+    { code: "ca", name: "Catalan", native: "Català", rtl: false },
+    { code: "gl", name: "Galician", native: "Galego", rtl: false },
+    { code: "is", name: "Icelandic", native: "Íslenska", rtl: false },
+    { code: "mt", name: "Maltese", native: "Malti", rtl: false },
+    { code: "sq", name: "Albanian", native: "Shqip", rtl: false },
+    { code: "mk", name: "Macedonian", native: "Македонски", rtl: false },
+    { code: "bs", name: "Bosnian", native: "Bosanski", rtl: false },
+    { code: "be", name: "Belarusian", native: "Беларуская", rtl: false },
+    { code: "tr", name: "Turkish", native: "Türkçe", rtl: false },
+    { code: "az", name: "Azerbaijani", native: "Azərbaycan", rtl: false },
+    { code: "ka", name: "Georgian", native: "ქართული", rtl: false },
+    { code: "hy", name: "Armenian", native: "Հայերեն", rtl: false },
+  ]},
+  { group: "Middle East & Africa", items: [
+    { code: "ar", name: "Arabic", native: "العربية", rtl: true },
+    { code: "he", name: "Hebrew", native: "עברית", rtl: true },
+    { code: "fa", name: "Persian", native: "فارسی", rtl: true },
+    { code: "ur", name: "Urdu", native: "اردو", rtl: true },
+    { code: "ku", name: "Kurdish", native: "کوردی", rtl: true },
+    { code: "ps", name: "Pashto", native: "پښتو", rtl: true },
+    { code: "sw", name: "Swahili", native: "Kiswahili", rtl: false },
+    { code: "am", name: "Amharic", native: "አማርኛ", rtl: false },
+    { code: "ha", name: "Hausa", native: "Hausa", rtl: false },
+    { code: "yo", name: "Yoruba", native: "Yorùbá", rtl: false },
+    { code: "ig", name: "Igbo", native: "Igbo", rtl: false },
+    { code: "zu", name: "Zulu", native: "isiZulu", rtl: false },
+    { code: "af", name: "Afrikaans", native: "Afrikaans", rtl: false },
+  ]},
+  { group: "Asia", items: [
+    { code: "zh", name: "Chinese (Simplified)", native: "简体中文", rtl: false },
+    { code: "zh-TW", name: "Chinese (Traditional)", native: "繁體中文", rtl: false },
+    { code: "ja", name: "Japanese", native: "日本語", rtl: false },
+    { code: "ko", name: "Korean", native: "한국어", rtl: false },
+    { code: "hi", name: "Hindi", native: "हिन्दी", rtl: false },
+    { code: "bn", name: "Bengali", native: "বাংলা", rtl: false },
+    { code: "ta", name: "Tamil", native: "தமிழ்", rtl: false },
+    { code: "te", name: "Telugu", native: "తెలుగు", rtl: false },
+    { code: "mr", name: "Marathi", native: "मराठी", rtl: false },
+    { code: "gu", name: "Gujarati", native: "ગુજરાતી", rtl: false },
+    { code: "kn", name: "Kannada", native: "ಕನ್ನಡ", rtl: false },
+    { code: "ml", name: "Malayalam", native: "മലയാളം", rtl: false },
+    { code: "pa", name: "Punjabi", native: "ਪੰਜਾਬੀ", rtl: false },
+    { code: "si", name: "Sinhala", native: "සිංහල", rtl: false },
+    { code: "ne", name: "Nepali", native: "नेपाली", rtl: false },
+    { code: "th", name: "Thai", native: "ไทย", rtl: false },
+    { code: "vi", name: "Vietnamese", native: "Tiếng Việt", rtl: false },
+    { code: "id", name: "Indonesian", native: "Bahasa Indonesia", rtl: false },
+    { code: "ms", name: "Malay", native: "Bahasa Melayu", rtl: false },
+    { code: "tl", name: "Filipino", native: "Filipino", rtl: false },
+    { code: "my", name: "Burmese", native: "မြန်မာ", rtl: false },
+    { code: "km", name: "Khmer", native: "ភាសាខ្មែរ", rtl: false },
+    { code: "lo", name: "Lao", native: "ລາວ", rtl: false },
+    { code: "mn", name: "Mongolian", native: "Монгол", rtl: false },
+    { code: "uz", name: "Uzbek", native: "Oʻzbek", rtl: false },
+    { code: "kk", name: "Kazakh", native: "Қазақ", rtl: false },
+    { code: "ky", name: "Kyrgyz", native: "Кыргызча", rtl: false },
+    { code: "tg", name: "Tajik", native: "Тоҷикӣ", rtl: false },
+    { code: "sd", name: "Sindhi", native: "سنڌي", rtl: true },
+    { code: "ug", name: "Uyghur", native: "ئۇيغۇرچە", rtl: true },
+    { code: "dv", name: "Dhivehi", native: "ދިވެހި", rtl: true },
+  ]},
+  { group: "Oceania", items: [
+    { code: "en-AU", name: "English (AU)", native: "English (AU)", rtl: false },
+    { code: "en-NZ", name: "English (NZ)", native: "English (NZ)", rtl: false },
+    { code: "mi", name: "Maori", native: "Te Reo Māori", rtl: false },
+    { code: "sm", name: "Samoan", native: "Gagana Samoa", rtl: false },
+    { code: "to", name: "Tongan", native: "Lea fakatonga", rtl: false },
+    { code: "fj", name: "Fijian", native: "Na Vosa Vakaviti", rtl: false },
+  ]},
+];
+
+/* ─── Translations ─── */
+const T = {
+  en: {
+    agreeTitle:"Disclaimer",agreeDesc:"This tool is provided for educational and personal use only. By proceeding, you acknowledge:",
+    agree1:"This tool inspects and modifies local save data files.",agree2:"Modifying save data may result in unexpected game behavior.",
+    agree3:"You accept full responsibility for any modifications made.",agree4:"This tool is not affiliated with or endorsed by any game developer.",
+    agree5:"No warranty of any kind is provided. This software is offered as is without guarantees.",
+    agree6:"The developers accept no liability for any damages or consequences resulting from use.",
+    agree7:"Do not use this tool to gain unfair advantages in competitive or online environments.",
+    agree8:"You are solely responsible for ensuring your use complies with applicable laws and terms of service.",
+    agreeLegal:"By clicking the button below, you confirm that you have read, understood, and agreed to all the terms above. You acknowledge that you use this tool entirely at your own risk.",
+    agreeBtn:"I Understand, Accept All Risks & Proceed",
+    uploadTitle:"Temple Run 2 Decrypter",uploadDesc:"Upload your save data file to inspect, analyze, and optionally edit its contents.",
+    dropBold:"Click to upload",dropOr:"or drag and drop",dropHint:"gamedata.txt",logo:"Temple Run 2 Decrypter",
+    sgOverview:"Overview",sgEconomy:"Economy",sgCollection:"Collection",sgUpgrades:"Upgrades",sgProgress:"Progress",sgTools:"Tools",
+    navOverview:"Overview",navMeta:"Meta Info",navEconomy:"Currency",navStats:"Statistics",navChars:"Characters",navPets:"Pets",
+    navHats:"Hats",navCollectables:"Collectables",navArtifacts:"Artifacts",navPowers:"Powers",navRegions:"Regions",navObjectives:"Objectives",navBP:"Battle Pass",
+    navDaily:"Daily Challenges",navQuick:"Quick Actions",navHash:"Hash Config",navRaw:"Raw Editor",navLog:"Edit Log",
+    navPerks:"Perks",navPotions:"Potions",navIdolQuest:"Idol Quest",navDailyTotems:"Daily Totems",navGlobalChallenges:"Global Challenges",navMinigame:"Minigame",
+    modeInspect:"Inspect",modeCosmetic:"Cosmetic",modeExperimental:"Experimental",diffBtn:"Changes",downloadBtn:"Download",
+    overviewTitle:"Overview",overviewDesc:"Quick summary of your save file.",
+    metaTitle:"Meta Information",metaDesc:"Save file metadata and system info.",
+    econTitle:"Currency",econDesc:"View and edit in game currency values.",
+    statsTitle:"Statistics",statsDesc:"Game statistics and lifetime records.",
+    charsTitle:"Characters",charsDesc:"Manage your character collection.",
+    petsTitle:"Pets",petsDesc:"Manage your pet collection.",
+    hatsTitle:"Hats",hatsDesc:"Equip accessories on your characters. Each hat requires a downloaded asset bundle. Use batch unlock to add hats gradually — load the game between batches so it can download the bundles.",unlockHatBatch:"Unlock Next Batch",unlockAllHats:"Unlock All",
+    collectTitle:"Collectables",collectDesc:"Map collectibles — unlock prizes by completing sets.",
+    navCollectables:"Collectables",unlockAllCollect:"Unlock All",lockAllCollect:"Lock All",
+    redeemed:"Redeemed",notRedeemed:"Not Redeemed",
+    artsTitle:"Artifacts",artsDesc:"Permanent upgrade artifacts.",
+    powsTitle:"Powers",powsDesc:"Power up abilities.",
+    regsTitle:"Regions",regsDesc:"World map regions.",
+    objsTitle:"Objectives",objsDesc:"Mission objectives and progress.",
+    bpTitle:"Battle Pass",bpDesc:"Current battle pass status.",
+    bpRunsWarn:"Minimum 60 total runs required for battle pass access. If your run count is below 60, it will be automatically increased to 60 when completing the battle pass.",
+    dcTitle:"Daily Challenges",dcDesc:"Today's challenge progress.",
+    qaTitle:"Quick Actions",qaDesc:"Powerful batch operations. Use with caution.",
+    qaMaxTitle:"Max Account",qaMaxDesc:"Unlock everything, max all currencies and statistics to high values.",
+    qaMaxWarn:"I understand this makes changes obvious",qaMaxBtn:"Max Everything",
+    qaRandTitle:"Randomize Values",qaRandDesc:"Randomises all currencies, lifetime totals, scores, distances, and run statistics to realistic values that look like natural gameplay.",
+    qaRandWarn:"I understand values will be overwritten",qaRandBtn:"Randomize",
+    qaUnlockTitle:"Unlock Everything",qaUnlockDesc:"Unlock all characters, pets, hats, artifacts, powers, regions, objectives, potions, battle pass, and minigame. Server-managed features (perks, daily challenges, totems, streaks, idol quest, global challenges) are skipped.",qaUnlockBtn:"Unlock All",
+    hashTitle:"Hash Configuration",hashDesc:"Configure the hash key and algorithm for save integrity.",
+    hashKeyLabel:"Hash Key",hashAlgoLabel:"Algorithm",hashSaveBtn:"Save",
+    rawTitle:"Raw JSON Editor",rawDesc:"Direct JSON editing. Requires Experimental mode.",rawLoadBtn:"Load JSON",rawSaveBtn:"Apply Changes",
+    logTitle:"Edit Log",logDesc:"History of all modifications made in this session.",logEmpty:"No edits yet.",
+    diffTitle:"Changes",diffEmpty:"No changes detected.",diffCloseBtn:"Close",
+    settingsTitle:"Settings",settingsDesc:"Appearance and language preferences.",settingsTheme:"Theme",settingsLang:"Language",
+    navSettings:"Settings",
+    inspectWarnTitle:"Inspect Mode Active",inspectWarnDesc:"Editing is disabled in Inspect mode. Switch to Cosmetic or Experimental mode to make changes to your save file.",
+    inspectSwitchCos:"Switch to Cosmetic",inspectDismiss:"Dismiss",
+    hashLockMsg:"This section modifies critical save integrity data.",hashAcceptLabel:"I accept the risks",
+    howToObtain:"How to obtain your save file?",guideAndroid:"Android",guideIOS:"iOS",guideBack:"Back",
+    rawLockMsg:"This section allows direct modification of raw save data.",rawAcceptLabel:"I accept the risks",
+    expConfirmTitle:"Switch to Experimental Mode?",expConfirmDesc:"Experimental mode allows modifying all values including raw JSON. Incorrect changes may corrupt your save file beyond repair.",
+    expConfirmYes:"Yes, Switch",expConfirmNo:"Cancel",
+    readonlyNotice:"Read-only in Inspect mode. Click to switch.",
+    playerLevel:"Player Level",showAll:"Show All",scrollTo:"Navigate",
+    unlockAllChars:"Unlock All",unlockAllPets:"Unlock All",unlockAllArts:"Unlock All",unlockAllPows:"Unlock All",
+    purchAllRegs:"Unlock All",completeObjs:"Complete All",completeBP:"Complete Battle Pass",completeDC:"Complete All",
+    removeAllChars:"Remove All",removeAllPets:"Remove All",removeAllHats:"Remove All",removeAllArts:"Remove All",removeAllPows:"Remove All",
+    unpurchAllRegs:"Lock All",uncompleteObjs:"Reset All",resetBP:"Reset Battle Pass",resetDC:"Reset All",
+    coins:"Coins",gems:"Gems",scrolls:"Scrolls",keys:"Keys",lcc:"Lifetime Coins",lscc:"Lifetime Gems",mult:"Multiplier",max:"MAX",
+    name:"Name",status:"Status",owned:"Owned",notOwned:"Not Owned",active:"Active",level:"Lv",
+    unlock:"Unlock",purchase:"Purchase",completed:"Completed",id:"ID",title:"Title",desc:"Description",type:"Type",
+    points:"Points",target:"Target",earned:"Earned",tiers:"Tiers",claimed:"Claimed",premium:"Premium",start:"Start",end:"End",
+    equip:"Equip",unequip:"Unequip",equipOn:"Equip on",remove:"Remove",lock:"Lock",reset:"Reset",set:"Set",save:"Save",apply:"Apply",select:"Select",equipped:"Equipped",
+    maxAllCurrency:"Max All",randCurrency:"Randomise Currency",randStats:"Randomise Stats",
+    highScore:"High Score",highScoreNR:"High Score (No Revive)",longestDist:"Longest Distance",longestDistNC:"Longest Dist. (No Continue)",
+    totalDist:"Total Distance",totalRuns:"Total Runs",totalRes:"Total Resurrections",
+    totalCoins:"Total Coins Collected",totalGems:"Total Gems Collected",highCoins:"Highest Coins (Run)",highGems:"Highest Gems (Run)",
+    totalScore:"Total Score",totalDailyCC:"Daily Challenge Completions",totalWeeklyCC:"Weekly Challenge Completions",
+    totalHeadStarts:"Head Start Uses",totalMegaHS:"Mega Head Start Uses",totalItemsCC:"Items Collected (Coins)",lpv119:"LPV119 Stat",
+    hash:"Hash",version:"Version",hrfl:"Tutorial Flag",installDate:"Install Date",
+    daysSinceInstall:"Days Since Install",daysPlayed:"Days Played",totalRunsMeta:"Total Runs",cloudVersion:"Cloud Version",timestamp:"Timestamp",
+    streakTitle:"Daily Streak",currentStreak:"Current Streak",longestStreak:"Longest Streak",
+    perk:"Perk",potionType:"Type",potionCount:"Count",tier:"Tier",
+    configId:"Config ID",ends:"Ends",levels:"Levels",progress:"Progress",score:"Score",inProgress:"In Progress",
+    task:"Task",bonusValue:"Bonus Value",duration:"Duration",found:"Found",notFound:"Not Found",done:"Done",incomplete:"Incomplete",
+    noGlobalChallenges:"No global challenges.",noMinigameTiers:"No minigame tiers found.",noIdolQuest:"No idol quest data.",noDailyTotems:"No daily totem data.",noBattlePass:"No active battle pass.",
+    yes:"Yes",no:"No",unlocked:"unlocked",auto:"Auto",light:"Light",dark:"Dark",
+    path:"Path",before:"Before",after:"After",changes:"changes",change:"change",
+    noIssues:"No issues detected",jsonLoaded:"JSON loaded.",hashSaved:"Hash config saved.",downloaded:"Downloaded!",networkError:"Network error.",uploadOk:"OK",maxWarnToast:"Warning: Setting maximum values may be detectable.",unsavedWarn:"You have unsaved changes. Are you sure you want to return to the upload screen? All changes will be lost."
+  },
+  es: {
+    agreeTitle:"Aviso Legal",agreeBtn:"Entiendo y Acepto",uploadTitle:"Temple Run 2 Decrypter",
+    uploadDesc:"Sube tu archivo de guardado para inspeccionar, analizar y opcionalmente editar su contenido.",
+    dropBold:"Haz clic para subir",dropOr:"o arrastra y suelta",logo:"Temple Run 2 Decrypter",
+    navOverview:"Resumen",navMeta:"Meta Info",navEconomy:"Moneda",navStats:"Estadísticas",navChars:"Personajes",
+    navPets:"Mascotas",navHats:"Sombreros",navCollectables:"Coleccionables",navArtifacts:"Artefactos",navPowers:"Poderes",navRegions:"Regiones",
+    navObjectives:"Objetivos",navBP:"Pase de Batalla",navDaily:"Desafíos Diarios",navQuick:"Acciones Rápidas",
+    navHash:"Config Hash",navRaw:"Editor Raw",navLog:"Registro",
+    modeInspect:"Inspeccionar",modeCosmetic:"Cosmético",modeExperimental:"Experimental",
+    diffBtn:"Cambios",downloadBtn:"Descargar",coins:"Monedas",gems:"Gemas",scrolls:"Pergaminos",keys:"Llaves",
+    max:"MÁX",owned:"Poseído",notOwned:"No Poseído",unlock:"Desbloquear",completed:"Completado",
+    highScore:"Puntuación Máxima",totalRuns:"Carreras Totales"
+  },
+  fr: {
+    agreeTitle:"Avertissement",agreeBtn:"Je Comprends et Accepte",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"Cliquez pour télécharger",dropOr:"ou glisser déposer",logo:"Temple Run 2 Decrypter",
+    navOverview:"Aperçu",navEconomy:"Monnaie",navStats:"Statistiques",navChars:"Personnages",
+    diffBtn:"Modifications",downloadBtn:"Télécharger",coins:"Pièces",gems:"Gemmes",max:"MAX",owned:"Possédé",unlock:"Débloquer",completed:"Terminé"
+  },
+  de: {
+    agreeTitle:"Haftungsausschluss",agreeBtn:"Ich Verstehe und Akzeptiere",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"Klicken zum Hochladen",dropOr:"oder ziehen und ablegen",logo:"Temple Run 2 Decrypter",
+    navOverview:"Übersicht",navEconomy:"Währung",navChars:"Charaktere",diffBtn:"Änderungen",downloadBtn:"Herunterladen",
+    coins:"Münzen",gems:"Edelsteine",max:"MAX",owned:"Besitzt",unlock:"Freischalten",completed:"Abgeschlossen"
+  },
+  ja: {
+    agreeTitle:"免責事項",agreeBtn:"理解し同意する",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"クリックしてアップロード",dropOr:"またはドラッグ＆ドロップ",logo:"Temple Run 2 Decrypter",
+    navOverview:"概要",navEconomy:"通貨",navChars:"キャラクター",diffBtn:"変更点",downloadBtn:"ダウンロード",
+    coins:"コイン",gems:"ジェム",max:"最大",owned:"所持",unlock:"解放",completed:"完了"
+  },
+  ko: {
+    agreeTitle:"면책 조항",agreeBtn:"이해하고 동의합니다",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"클릭하여 업로드",dropOr:"또는 드래그 앤 드롭",logo:"Temple Run 2 Decrypter",
+    navOverview:"개요",navEconomy:"재화",navChars:"캐릭터",diffBtn:"변경사항",downloadBtn:"다운로드",
+    coins:"코인",gems:"보석",max:"최대",owned:"보유",unlock:"잠금해제",completed:"완료"
+  },
+  zh: {
+    agreeTitle:"免责声明",agreeBtn:"我理解并接受",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"点击上传",dropOr:"或拖放文件",logo:"Temple Run 2 Decrypter",
+    navOverview:"概览",navEconomy:"货币",navChars:"角色",diffBtn:"更改",downloadBtn:"下载",
+    coins:"金币",gems:"宝石",max:"最大",owned:"已拥有",unlock:"解锁",completed:"已完成"
+  },
+  ru: {
+    agreeTitle:"Отказ от ответственности",agreeBtn:"Я понимаю и принимаю",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"Нажмите для загрузки",dropOr:"или перетащите файл",logo:"Temple Run 2 Decrypter",
+    navOverview:"Обзор",navEconomy:"Валюта",navChars:"Персонажи",diffBtn:"Изменения",downloadBtn:"Скачать",
+    coins:"Монеты",gems:"Кристаллы",max:"МАКС",owned:"Есть",unlock:"Разблокировать",completed:"Завершено"
+  },
+  tr: {
+    agreeTitle:"Sorumluluk Reddi",agreeBtn:"Anlıyorum ve Kabul Ediyorum",uploadTitle:"Temple Run 2 Decrypter",
+    uploadDesc:"Kayıt dosyanızı incelemek, analiz etmek ve isteğe bağlı olarak düzenlemek için yükleyin.",
+    dropBold:"Yüklemek için tıklayın",dropOr:"veya sürükleyip bırakın",logo:"Temple Run 2 Decrypter",
+    navOverview:"Genel Bakış",navMeta:"Meta Bilgi",navEconomy:"Para Birimi",navStats:"İstatistikler",
+    navChars:"Karakterler",navPets:"Evcil Hayvanlar",navHats:"Şapkalar",navCollectables:"Koleksiyonlar",navArtifacts:"Eserler",
+    navPowers:"Güçler",navRegions:"Bölgeler",navObjectives:"Hedefler",navBP:"Savaş Bileti",
+    navDaily:"Günlük Görevler",navQuick:"Hızlı İşlemler",navHash:"Hash Ayarları",navRaw:"Ham Düzenleyici",navLog:"Düzenleme Günlüğü",
+    modeInspect:"İncele",modeCosmetic:"Kozmetik",modeExperimental:"Deneysel",diffBtn:"Değişiklikler",downloadBtn:"İndir",
+    coins:"Altın",gems:"Elmas",scrolls:"Parşömen",keys:"Anahtar",max:"MAKS",owned:"Sahip",notOwned:"Sahip Değil",
+    unlock:"Kilidi Aç",completed:"Tamamlandı",highScore:"En Yüksek Skor",totalRuns:"Toplam Koşu",
+    bpRunsWarn:"Savaş bileti erişimi için en az 15 toplam koşu gereklidir. Koşu sayınız 15'in altındaysa, savaş bileti tamamlanırken otomatik olarak 15'e yükseltilir."
+  },
+  ar: {
+    agreeTitle:"إخلاء المسؤولية",agreeBtn:"أفهم وأوافق",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"انقر للتحميل",dropOr:"أو اسحب وأفلت",logo:"Temple Run 2 Decrypter",
+    navOverview:"نظرة عامة",navEconomy:"العملة",navChars:"الشخصيات",diffBtn:"التغييرات",downloadBtn:"تحميل",
+    coins:"عملات",gems:"جواهر",max:"أقصى",owned:"مملوك",unlock:"فتح",completed:"مكتمل"
+  },
+  hi: {
+    agreeTitle:"अस्वीकरण",agreeBtn:"मैं समझता/समझती हूँ और स्वीकार करता/करती हूँ",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"अपलोड करने के लिए क्लिक करें",dropOr:"या खींचें और छोड़ें",logo:"Temple Run 2 Decrypter",
+    navOverview:"अवलोकन",navEconomy:"मुद्रा",navChars:"पात्र",diffBtn:"बदलाव",downloadBtn:"डाउनलोड",
+    coins:"सिक्के",gems:"रत्न",max:"अधिकतम",unlock:"अनलॉक",completed:"पूर्ण"
+  },
+  pt: {
+    agreeTitle:"Aviso Legal",agreeBtn:"Eu Entendo e Aceito",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"Clique para enviar",dropOr:"ou arraste e solte",logo:"Temple Run 2 Decrypter",
+    navOverview:"Visão Geral",navEconomy:"Moeda",navChars:"Personagens",diffBtn:"Alterações",downloadBtn:"Baixar",
+    coins:"Moedas",gems:"Gemas",max:"MÁX",unlock:"Desbloquear",completed:"Concluído"
+  },
+  it: {
+    agreeTitle:"Dichiarazione di non responsabilità",agreeBtn:"Capisco e Accetto",uploadTitle:"Temple Run 2 Decrypter",
+    dropBold:"Clicca per caricare",dropOr:"o trascina e rilascia",logo:"Temple Run 2 Decrypter",
+    navOverview:"Panoramica",navEconomy:"Valuta",navChars:"Personaggi",diffBtn:"Modifiche",downloadBtn:"Scarica",
+    coins:"Monete",gems:"Gemme",max:"MAX",unlock:"Sblocca",completed:"Completato"
+  },
+  "en-GB": {
+    agreeTitle:"Disclaimer & Legal Notice",
+    agreeDesc:"This tool is provided strictly for educational and personal use. By proceeding, you acknowledge and agree to the following:",
+    agree1:"This tool inspects and modifies local save data files stored on your device.",
+    agree2:"Modifying save data may cause unexpected game behaviour, data corruption, progress loss, or account restrictions.",
+    agree3:"You accept full and sole responsibility for any modifications made to your save files.",
+    agree4:"This tool is not affiliated with, endorsed by, or connected to Imangi Studios or any game developer or publisher.",
+    agree5:"No warranty of any kind is provided. This software is offered as is without guarantees of functionality, accuracy, or fitness for any purpose.",
+    agree6:"The developers of this tool accept no liability for any damages, losses, or consequences resulting from its use.",
+    agree7:"Do not use this tool to gain unfair advantages in competitive or online environments. Misuse may violate terms of service.",
+    agree8:"You are solely responsible for ensuring your use complies with applicable laws and terms of service.",
+    agreeLegal:"By clicking the button below, you confirm that you have read, understood, and agreed to all the terms above. You acknowledge that you use this tool entirely at your own risk.",
+    agreeBtn:"I Understand, Accept All Risks & Proceed",
+    uploadTitle:"Temple Run 2 Decrypter",uploadDesc:"Upload your save data file to inspect, analyse, and optionally edit its contents.",
+    dropBold:"Click to upload",dropOr:"or drag and drop",logo:"Temple Run 2 Decrypter",
+    sgOverview:"Overview",sgEconomy:"Economy",sgCollection:"Collection",sgUpgrades:"Upgrades",sgProgress:"Progress",sgTools:"Tools",
+    navOverview:"Overview",navMeta:"Meta Info",navEconomy:"Currency",navStats:"Statistics",navChars:"Characters",navPets:"Pets",
+    navHats:"Hats",navCollectables:"Collectables",navArtifacts:"Artifacts",navPowers:"Powers",navRegions:"Regions",navObjectives:"Objectives",navBP:"Battle Pass",
+    navDaily:"Daily Challenges",navQuick:"Quick Actions",navHash:"Hash Config",navRaw:"Raw Editor",navLog:"Edit Log",
+    navPerks:"Perks",navPotions:"Potions",navIdolQuest:"Idol Quest",navDailyTotems:"Daily Totems",navGlobalChallenges:"Global Challenges",navMinigame:"Minigame",
+    modeInspect:"Inspect",modeCosmetic:"Cosmetic",modeExperimental:"Experimental",diffBtn:"Changes",downloadBtn:"Download",
+    overviewTitle:"Overview",overviewDesc:"Quick summary of your save file.",
+    metaTitle:"Meta Information",metaDesc:"Save file metadata and system info.",
+    econTitle:"Currency",econDesc:"View and edit in-game currency values.",
+    statsTitle:"Statistics",statsDesc:"Game statistics and lifetime records.",
+    charsTitle:"Characters",charsDesc:"Manage your character collection.",
+    petsTitle:"Pets",petsDesc:"Manage your pet collection.",
+    hatsTitle:"Hats",hatsDesc:"Equip accessories on your characters. Each hat requires a downloaded asset bundle. Use batch unlock to add hats gradually — load the game between batches so it can download the bundles.",unlockHatBatch:"Unlock Next Batch",unlockAllHats:"Unlock All",
+    collectTitle:"Collectables",collectDesc:"Map collectibles — unlock prizes by completing sets.",
+    navCollectables:"Collectables",unlockAllCollect:"Unlock All",lockAllCollect:"Lock All",
+    redeemed:"Redeemed",notRedeemed:"Not Redeemed",
+    artsTitle:"Artifacts",artsDesc:"Permanent upgrade artifacts.",
+    powsTitle:"Powers",powsDesc:"Power-up abilities.",
+    regsTitle:"Regions",regsDesc:"World map regions.",
+    objsTitle:"Objectives",objsDesc:"Mission objectives and progress.",
+    bpTitle:"Battle Pass",bpDesc:"Current battle pass status.",
+    bpRunsWarn:"Minimum 60 total runs required for battle pass access. If your run count is below 60, it will be automatically increased to 60 when completing the battle pass.",
+    dcTitle:"Daily Challenges",dcDesc:"Today's challenge progress.",
+    qaTitle:"Quick Actions",qaDesc:"Powerful batch operations. Use with caution.",
+    qaMaxTitle:"Max Account",qaMaxDesc:"Unlock everything, max all currencies and statistics to high values.",
+    qaMaxWarn:"I understand this makes changes obvious",qaMaxBtn:"Max Everything",
+    qaRandTitle:"Randomise Values",qaRandDesc:"Randomises all currencies, lifetime totals, scores, distances, and run statistics to realistic values that look like natural gameplay.",
+    qaRandWarn:"I understand values will be overwritten",qaRandBtn:"Randomise",
+    qaUnlockTitle:"Unlock Everything",qaUnlockDesc:"Unlock all characters, pets, hats, artifacts, powers, regions, objectives, potions, battle pass, and minigame. Server-managed features (perks, daily challenges, totems, streaks, idol quest, global challenges) are skipped.",qaUnlockBtn:"Unlock All",
+    hashTitle:"Hash Configuration",hashDesc:"Configure the hash key and algorithm for save integrity.",
+    hashKeyLabel:"Hash Key",hashAlgoLabel:"Algorithm",hashSaveBtn:"Save",
+    rawTitle:"Raw JSON Editor",rawDesc:"Direct JSON editing. Requires Experimental mode.",rawLoadBtn:"Load JSON",rawSaveBtn:"Apply Changes",
+    logTitle:"Edit Log",logDesc:"History of all modifications made in this session.",logEmpty:"No edits yet.",
+    diffTitle:"Changes",diffEmpty:"No changes detected.",diffCloseBtn:"Close",
+    settingsTitle:"Settings",settingsDesc:"Appearance and language preferences.",settingsTheme:"Theme",settingsLang:"Language",
+    navSettings:"Settings",
+    inspectWarnTitle:"Inspect Mode Active",inspectWarnDesc:"Editing is disabled in Inspect mode. Switch to Cosmetic or Experimental mode to make changes to your save file.",
+    inspectSwitchCos:"Switch to Cosmetic",inspectDismiss:"Dismiss",
+    hashLockMsg:"This section modifies critical save integrity data.",hashAcceptLabel:"I accept the risks",
+    howToObtain:"How to obtain your save file?",guideAndroid:"Android",guideIOS:"iOS",guideBack:"Back",
+    rawLockMsg:"This section allows direct modification of raw save data.",rawAcceptLabel:"I accept the risks",
+    expConfirmTitle:"Switch to Experimental Mode?",expConfirmDesc:"Experimental mode allows modifying all values including raw JSON. Incorrect changes may corrupt your save file beyond repair.",
+    expConfirmYes:"Yes, Switch",expConfirmNo:"Cancel",
+    readonlyNotice:"Read-only in Inspect mode. Click to switch.",
+    playerLevel:"Player Level",showAll:"Show All",scrollTo:"Navigate",
+    unlockAllChars:"Unlock All",unlockAllPets:"Unlock All",unlockAllArts:"Unlock All",unlockAllPows:"Unlock All",
+    purchAllRegs:"Unlock All",completeObjs:"Complete All",completeBP:"Complete Battle Pass",completeDC:"Complete All",
+    removeAllChars:"Remove All",removeAllPets:"Remove All",removeAllHats:"Remove All",removeAllArts:"Remove All",removeAllPows:"Remove All",
+    unpurchAllRegs:"Lock All",uncompleteObjs:"Reset All",resetBP:"Reset Battle Pass",resetDC:"Reset All",
+    coins:"Coins",gems:"Gems",scrolls:"Scrolls",keys:"Keys",lcc:"Lifetime Coins",lscc:"Lifetime Gems",mult:"Multiplier",max:"MAX",
+    maxAllCurrency:"Max All",randCurrency:"Randomise Currency",randStats:"Randomise Stats",
+    name:"Name",status:"Status",owned:"Owned",notOwned:"Not Owned",active:"Active",level:"Lv",
+    unlock:"Unlock",purchase:"Purchase",completed:"Completed",id:"ID",title:"Title",desc:"Description",type:"Type",
+    points:"Points",target:"Target",earned:"Earned",tiers:"Tiers",claimed:"Claimed",premium:"Premium",start:"Start",end:"End",
+    equip:"Equip",unequip:"Unequip",equipOn:"Equip on",remove:"Remove",lock:"Lock",reset:"Reset",set:"Set",save:"Save",apply:"Apply",select:"Select",equipped:"Equipped",
+    highScore:"High Score",highScoreNR:"High Score (No Revive)",longestDist:"Longest Distance",longestDistNC:"Longest Dist. (No Continue)",
+    totalDist:"Total Distance",totalRuns:"Total Runs",totalRes:"Total Resurrections",
+    totalCoins:"Total Coins Collected",totalGems:"Total Gems Collected",highCoins:"Highest Coins (Run)",highGems:"Highest Gems (Run)",
+    totalScore:"Total Score",totalDailyCC:"Daily Challenge Completions",totalWeeklyCC:"Weekly Challenge Completions",
+    totalHeadStarts:"Head Start Uses",totalMegaHS:"Mega Head Start Uses",totalItemsCC:"Items Collected (Coins)",lpv119:"LPV119 Stat",
+    hash:"Hash",version:"Version",hrfl:"Tutorial Flag",installDate:"Install Date",
+    daysSinceInstall:"Days Since Install",daysPlayed:"Days Played",totalRunsMeta:"Total Runs",cloudVersion:"Cloud Version",timestamp:"Timestamp",
+    streakTitle:"Daily Streak",currentStreak:"Current Streak",longestStreak:"Longest Streak",
+    perk:"Perk",potionType:"Type",potionCount:"Count",tier:"Tier",
+    configId:"Config ID",ends:"Ends",levels:"Levels",progress:"Progress",score:"Score",inProgress:"In Progress",
+    task:"Task",bonusValue:"Bonus Value",duration:"Duration",found:"Found",notFound:"Not Found",done:"Done",incomplete:"Incomplete",
+    noGlobalChallenges:"No global challenges.",noMinigameTiers:"No minigame tiers found.",noIdolQuest:"No idol quest data.",noDailyTotems:"No daily totem data.",noBattlePass:"No active battle pass.",
+    yes:"Yes",no:"No",unlocked:"unlocked",auto:"Auto",light:"Light",dark:"Dark",
+    path:"Path",before:"Before",after:"After",changes:"changes",change:"change",
+    noIssues:"No issues detected",jsonLoaded:"JSON loaded.",hashSaved:"Hash config saved.",downloaded:"Downloaded!",networkError:"Network error.",uploadOk:"OK",maxWarnToast:"Warning: Setting maximum values may be detectable.",unsavedWarn:"You have unsaved changes. Are you sure you want to return to the upload screen? All changes will be lost."
+  },
+};
+
+let curLang = 'en';
+
+function t(key) {
+  return (T[curLang] || T[curLang.split('-')[0]] || T.en || {})[key] || (T.en || {})[key] || key;
+}
+
+function applyTranslations() {
+  const map = T.en;
+  for (const key of Object.keys(map)) {
+    const el = document.getElementById('t_' + key);
+    if (el) el.textContent = t(key);
+  }
+  document.documentElement.lang = curLang;
+  const rtlLang = LANGS.flatMap(g => g.items).find(l => l.code === curLang || l.code === curLang.split('-')[0]);
+  document.documentElement.dir = (rtlLang && rtlLang.rtl) ? 'rtl' : 'ltr';
+}
+
+function setLang(code) {
+  curLang = code;
+  localStorage.setItem('si_lang', code);
+  applyTranslations();
+  document.querySelectorAll('.lang-dropdown').forEach(d => d.classList.remove('show'));
+  const langInfo = LANGS.flatMap(g => g.items).find(l => l.code === code);
+  const label = langInfo ? langInfo.native : code;
+  const btn1 = document.getElementById('langPickerBtn');
+  if (btn1) btn1.innerHTML = IC.globe + ' ' + label;
+  if (A) renderAll();
+  else renderSettings();
+}
+
+function populateLangList(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  let html = '';
+  for (const group of LANGS) {
+    html += '<div class="lang-group-title">' + group.group + '</div>';
+    for (const l of group.items) {
+      html += '<div class="lang-option' + (l.code === curLang ? ' active' : '') + '" onclick="setLang(\'' + l.code + '\')" data-search="' + (l.name + ' ' + l.native + ' ' + l.code).toLowerCase() + '">';
+      html += '<span>' + l.name + '</span><span class="native">' + l.native + '</span></div>';
+    }
+  }
+  c.innerHTML = html;
+}
+
+function filterLangs(q, listNum) {
+  const containerId = listNum === 3 ? 'langList3' : 'langList';
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const els = container.querySelectorAll('.lang-option, .lang-group-title');
+  const low = q.toLowerCase();
+  let groupHasVisible = false;
+  let lastGroup = null;
+  for (const el of els) {
+    if (el.classList.contains('lang-group-title')) {
+      if (lastGroup) lastGroup.style.display = groupHasVisible ? '' : 'none';
+      lastGroup = el;
+      groupHasVisible = false;
+    } else {
+      const match = !q || el.dataset.search.includes(low);
+      el.style.display = match ? '' : 'none';
+      if (match) groupHasVisible = true;
+    }
+  }
+  if (lastGroup) lastGroup.style.display = groupHasVisible ? '' : 'none';
+}
+
+function toggleLangDropdown(e) {
+  e.stopPropagation();
+  const dd = e.currentTarget.nextElementSibling || e.currentTarget.parentElement.querySelector('.lang-dropdown');
+  const isShow = dd.classList.contains('show');
+  document.querySelectorAll('.lang-dropdown').forEach(d => d.classList.remove('show'));
+  if (!isShow) { dd.classList.add('show'); dd.querySelector('.lang-search')?.focus(); }
+}
+
+/* ─── Theme ─── */
+let themeIdx = 0;
+const themes = ['auto', 'light', 'dark'];
+
+function getThemeIcon(idx) {
+  return [IC.gear, IC.sun, IC.moon][idx] || IC.gear;
+}
+
+function setTheme(th) {
+  themeIdx = themes.indexOf(th);
+  if (themeIdx < 0) themeIdx = 0;
+  if (th === 'auto') document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+  else document.documentElement.dataset.theme = th;
+  localStorage.setItem('si_theme', th);
+  renderSettings();
+}
+
+function cycleTheme() {
+  themeIdx = (themeIdx + 1) % 3;
+  setTheme(themes[themeIdx]);
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('si_theme') || 'auto';
+  themeIdx = themes.indexOf(saved);
+  if (themeIdx < 0) themeIdx = 0;
+  const th = themes[themeIdx];
+  if (th === 'auto') document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+  else document.documentElement.dataset.theme = th;
+}
+
+/* ─── Settings Render ─── */
+function renderSettings() {
+  const el = document.getElementById('settingsContent');
+  if (!el) return;
+  const th = themes[themeIdx];
+  let html = '<div class="glass-card settings-card"><div class="settings-label">' + t('settingsTheme') + '</div><div class="theme-options">';
+  html += '<div class="theme-option' + (th === 'auto' ? ' active' : '') + '" onclick="setTheme(\'auto\')">' + IC.gear + ' ' + t('auto') + '</div>';
+  html += '<div class="theme-option' + (th === 'light' ? ' active' : '') + '" onclick="setTheme(\'light\')">' + IC.sun + ' ' + t('light') + '</div>';
+  html += '<div class="theme-option' + (th === 'dark' ? ' active' : '') + '" onclick="setTheme(\'dark\')">' + IC.moon + ' ' + t('dark') + '</div>';
+  html += '</div></div>';
+  html += '<div class="glass-card settings-card"><div class="settings-label">' + t('settingsLang') + '</div>';
+  html += '<div class="lang-picker" style="width:100%">';
+  const langInfo = LANGS.flatMap(g => g.items).find(l => l.code === curLang);
+  const label = langInfo ? langInfo.native : curLang;
+  html += '<button class="btn btn-secondary btn-sm lang-picker-btn" style="width:100%;justify-content:start" onclick="toggleLangDropdown(event)" id="langPickerBtn3">' + IC.globe + ' ' + label + '</button>';
+  html += '<div class="lang-dropdown glass" id="langDropdown3" style="width:100%">';
+  html += '<input type="text" class="lang-search" name="langSearch3" placeholder="Search languages..." oninput="filterLangs(this.value,3)">';
+  html += '<div class="lang-list" id="langList3"></div>';
+  html += '</div></div></div>';
+  el.innerHTML = html;
+  populateLangList('langList3');
+}
+
+/* ─── Save File Guide ─── */
+function detectOS() {
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'desktop';
+}
+
+function renderSaveGuide() {
+  const el = document.getElementById('saveGuide');
+  if (!el) return;
+  el.innerHTML = '<div class="save-guide-flow" id="guideFlow"><span class="save-guide-link" onclick="showGuideOptions()">' + t('howToObtain') + '</span></div>';
+}
+
+function showGuideOptions() {
+  const el = document.getElementById('guideFlow');
+  const os = detectOS();
+  el.innerHTML =
+    '<div class="save-guide-options">' +
+    '<div class="save-guide-option' + (os === 'android' ? ' recommended' : '') + '" onclick="showGuideDetail(\'android\')">' +
+    (os === 'android' ? '<span class="guide-badge" style="position:static;margin-bottom:4px">Detected</span>' : '') +
+    '<div class="guide-os-icon">' + IC.android + '</div>' +
+    '<span class="guide-os-label">' + t('guideAndroid') + '</span></div>' +
+    '<div class="save-guide-option' + (os === 'ios' ? ' recommended' : '') + '" onclick="showGuideDetail(\'ios\')">' +
+    (os === 'ios' ? '<span class="guide-badge" style="position:static;margin-bottom:4px">Detected</span>' : '') +
+    '<div class="guide-os-icon">' + IC.apple + '</div>' +
+    '<span class="guide-os-label">' + t('guideIOS') + '</span></div></div>';
+}
+
+function showGuideDetail(platform) {
+  const el = document.getElementById('guideFlow');
+  let content = '';
+  if (platform === 'android') {
+    content = '<h4>' + IC.android + ' ' + t('guideAndroid') + '</h4>' +
+      '<ol><li>Install a file manager (e.g. MT Manager, Root Explorer)</li>' +
+      '<li>Navigate to <strong>/data/data/com.imangi.templerun2/files/</strong></li>' +
+      '<li>Copy <strong>gamedata.txt</strong> to an accessible location</li>' +
+      '<li>Upload it here</li></ol>' +
+      '<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">Root access is typically required.</p>';
+  } else {
+    content = '<h4>' + IC.apple + ' ' + t('guideIOS') + '</h4>' +
+      '<ol><li>Connect your device to a computer</li>' +
+      '<li>Use iMazing, 3uTools, or an iTunes backup extractor</li>' +
+      '<li>Browse the Temple Run 2 app container &rsaquo; Documents</li>' +
+      '<li>Export <strong>gamedata.txt</strong> and upload it here</li></ol>' +
+      '<p style="font-size:11px;color:var(--text-secondary);margin-top:8px">No jailbreak required with iMazing.</p>';
+  }
+  el.innerHTML = '<div class="save-guide-detail">' + content + '</div>' +
+    '<span class="save-guide-back" onclick="showGuideOptions()">' + IC.arrowLeft + ' ' + t('guideBack') + '</span>';
+}
+
+/* ─── Home / Reset ─── */
+function goHome() {
+  if (A && A.editLog && A.editLog.length > 0) {
+    if (!confirm(t('unsavedWarn'))) return;
+  }
+  SID = null; A = null;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('uploadScreen').style.display = 'flex';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('modeSelect').value = 'inspect';
+  currentSection = 'overview';
+}
+
+/* ─── Agreement & Upload ─── */
+function acceptAgreement() {
+  localStorage.setItem('si_agreed', '1');
+  document.getElementById('agreementScreen').style.display = 'none';
+  document.getElementById('uploadScreen').style.display = 'flex';
+}
+
+function initUpload() {
+  const dz = document.getElementById('dropzone');
+  const fi = document.getElementById('fileInput');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]); });
+  fi.addEventListener('change', () => { if (fi.files.length) uploadFile(fi.files[0]); });
+}
+
+async function uploadFile(file) {
+  const errEl = document.getElementById('uploadError');
+  errEl.style.display = 'none';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/api/upload', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (!r.ok) { errEl.textContent = j.error || 'Upload failed.'; errEl.style.display = 'block'; return; }
+    SID = j.session_id;
+    A = j.analysis;
+    document.getElementById('uploadScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'block';
+    renderAll();
+    toast(t('uploadTitle') + ': ' + t('uploadOk'), 'success');
+  } catch (e) { errEl.textContent = t('networkError'); errEl.style.display = 'block'; }
+}
+
+/* ─── Navigation ─── */
+function navTo(section, el) {
+  currentSection = section;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('sec-' + section);
+  if (sec) sec.classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+/* ─── API Helpers ─── */
+async function api(url, body) {
+  body.session_id = SID;
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) {
+      try { const j = await r.json(); return j; } catch (_) {}
+      return { error: 'Server error (' + r.status + ')' };
+    }
+    return r.json();
+  } catch (e) {
+    return { error: 'Network error: ' + e.message };
+  }
+}
+
+async function setMode(m) {
+  if (m === 'experimental') {
+    document.getElementById('expConfirmModal').classList.add('show');
+    return;
+  }
+  const j = await api('/api/mode', { mode: m });
+  if (j.error) { toast(j.error, 'error'); return; }
+  A = j.analysis;
+  updateModeIndicators();
+  renderAll();
+}
+
+async function confirmExperimental(yes) {
+  document.getElementById('expConfirmModal').classList.remove('show');
+  if (!yes) { document.getElementById('modeSelect').value = A ? A.mode : 'inspect'; return; }
+  const j = await api('/api/mode', { mode: 'experimental' });
+  if (j.error) { toast(j.error, 'error'); return; }
+  A = j.analysis;
+  updateModeIndicators();
+  renderAll();
+}
+
+function toggleRawLock(checked) {
+  const w = document.getElementById('rawLockWrapper');
+  const o = document.getElementById('rawUnlockOverlay');
+  if (checked) { w.classList.remove('hash-locked'); o.style.display = 'none'; }
+  else { w.classList.add('hash-locked'); o.style.display = 'flex'; }
+}
+
+let _pendingAction = null;
+
+async function editAction(action, params) {
+  if (A && A.mode === 'inspect') {
+    _pendingAction = { action, params: params || {} };
+    showInspectWarning();
+    return;
+  }
+  const j = await api('/api/edit', { action, params: params || {} });
+  if (j.error) { toast(j.error, 'error'); return; }
+  if (j.is_error) { toast(j.result, 'error'); return; }
+  A = j.analysis;
+  try { renderAll(); } catch (e) { toast('Render error: ' + e.message, 'error'); console.error(e); return; }
+  toast(j.result, 'success');
+}
+
+/* ─── Render All ─── */
+function renderAll() {
+  renderOverview(); renderMeta(); renderEconomy(); renderPotions(); renderStats();
+  renderCharacters(); renderPets(); renderHats(); renderCollectables();
+  renderArtifacts(); renderPowers(); renderPerks(); renderRegions();
+  renderObjectives(); renderBattlePass(); renderDailyChallenges();
+  renderIdolQuest(); renderDailyTotems(); renderGlobalChallenges(); renderMinigame();
+  renderLog(); renderSettings();
+  updateModeIndicators();
+  updateFieldLocking();
+  updateBadgesAndCounters();
+}
+
+function updateBadgesAndCounters() {
+  function setBadge(id, cur, total, counterId) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = cur + '/' + total;
+    el.classList.toggle('complete', total > 0 && cur >= total);
+    if (counterId) {
+      const ce = document.getElementById(counterId);
+      if (ce) { ce.textContent = cur + ' / ' + total; ce.classList.toggle('complete', total > 0 && cur >= total); }
+    }
+  }
+
+  // Characters
+  const oc = A.characters ? A.characters.filter(c => c.owned).length : 0;
+  const tc = A.characters ? A.characters.length : 0;
+  setBadge('charBadge', oc, tc, 'charsCounter');
+
+  // Pets
+  const op = A.pets ? A.pets.filter(p => p.owned).length : 0;
+  const tp = A.pets ? A.pets.length : 0;
+  setBadge('petBadge', op, tp, 'petsCounter');
+
+  // Hats
+  const oh = A.hats ? A.hats.filter(h => h.owned || h.equipped).length : 0;
+  const th = A.hats ? A.hats.length : 0;
+  setBadge('hatBadge', oh, th, 'hatsCounter');
+
+  // Collectables
+  const rc = A.collectables ? A.collectables.filter(c => c.redeemed).length : 0;
+  const tcc = A.collectables ? A.collectables.length : 0;
+  setBadge('collectBadge', rc, tcc, 'collectCounter');
+
+  // Artifacts
+  const oa = A.artifacts ? A.artifacts.filter(a => a.owned).length : 0;
+  const ta = A.artifacts ? A.artifacts.length : 0;
+  setBadge('artBadge', oa, ta, 'artsCounter');
+
+  // Powers
+  const opw = A.powers ? A.powers.filter(p => p.owned).length : 0;
+  const tpw = A.powers ? A.powers.length : 0;
+  setBadge('powBadge', opw, tpw, 'powsCounter');
+
+  // Perks
+  const mp = A.perks ? A.perks.filter(p => p.level >= p.max).length : 0;
+  const tprk = A.perks ? A.perks.length : 0;
+  setBadge('perkBadge', mp, tprk, 'perksCounter');
+
+  // Regions
+  const pr = A.regions ? A.regions.filter(r => r.purchased).length : 0;
+  const trg = A.regions ? A.regions.length : 0;
+  setBadge('regBadge', pr, trg, 'regsCounter');
+
+  // Objectives
+  const co = A.objectives ? (A.objectives.completed || 0) : 0;
+  const tob = A.objectives ? (A.objectives.total || 0) : 0;
+  setBadge('objBadge', co, tob, 'objsCounter');
+
+  // Battle Pass
+  const bp = A.battlePass;
+  const bpEl = document.getElementById('bpBadge');
+  if (bpEl) {
+    bpEl.textContent = bp ? ((bp.unlockedTiers||0) + '/' + bp.totalTiers) : '\u2014';
+    bpEl.classList.toggle('complete', bp && (bp.unlockedTiers||0) >= bp.totalTiers);
+  }
+
+  // Daily Challenges
+  const dcArr = A.dailyChallenges || [];
+  const dcc = dcArr.filter(c => c.status === 'Completed').length;
+  setBadge('dcBadge', dcc, dcArr.length);
+
+  // Idol Quest
+  const iq = A.idolQuest;
+  const iqEl = document.getElementById('iqBadge');
+  if (iqEl) {
+    iqEl.textContent = iq ? ((iq.levelsCompleted||0) + '/' + (iq.totalLevels||5)) : '\u2014';
+    iqEl.classList.toggle('complete', iq && iq.completed);
+  }
+
+  // Daily Totems
+  const dt = A.dailyTotems;
+  const dtEl = document.getElementById('dtBadge');
+  if (dtEl) {
+    dtEl.textContent = dt ? (dt.totalFound + '/' + dt.totalTotems) : '\u2014';
+    dtEl.classList.toggle('complete', dt && dt.totalFound >= dt.totalTotems);
+  }
+
+  // Global Challenges
+  const gcArr = A.globalChallenges || [];
+  const gcc = gcArr.filter(c => c.target > 0 && c.current >= c.target).length;
+  const gcEl = document.getElementById('gcBadge');
+  if (gcEl) {
+    gcEl.textContent = gcArr.length ? (gcc + '/' + gcArr.length) : '\u2014';
+    gcEl.classList.toggle('complete', gcArr.length > 0 && gcc >= gcArr.length);
+  }
+
+  // Minigame
+  const mgTiers = (A.minigame && A.minigame.tiers) ? A.minigame.tiers : [];
+  const mgc = mgTiers.filter(t => t.completed).length;
+  const mgEl = document.getElementById('mgBadge');
+  if (mgEl) {
+    mgEl.textContent = mgTiers.length ? (mgc + '/' + mgTiers.length) : '\u2014';
+    mgEl.classList.toggle('complete', mgTiers.length > 0 && mgc >= mgTiers.length);
+  }
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+/* ─── Overview ─── */
+function renderOverview() {
+  const m = A.meta, e = A.economy;
+  const lvl = A.gameLevel != null ? A.gameLevel : (A.playerLevel != null ? A.playerLevel : (A.objectives?.level || 0));
+  const maxLvl = A.maxGameLevel || A.maxLevel || '?';
+  const lvlPts = A.playerLevel != null ? A.playerLevel : '';
+  const maxPts = A.maxLevel || '';
+  const items = [
+    { l: t('coins'), v: num(e.coins) }, { l: t('gems'), v: num(e.gems) },
+    { l: t('highScore'), v: num(A.stats?.lifetime?.HS || 0) }, { l: t('totalRuns'), v: num(m.totalRuns || 0) },
+    { l: t('daysPlayed'), v: m.daysPlayed || '0' }, { l: t('mult'), v: e.mult + 'x' },
+    { l: t('playerLevel'), v: lvl + ' / ' + maxLvl + (lvlPts ? ' (' + lvlPts + ' / ' + maxPts + ' pts)' : '') },
+  ];
+  document.getElementById('overviewGrid').innerHTML = items.map(i =>
+    '<div class="info-item"><div class="label">' + i.l + '</div><div class="value">' + i.v + '</div></div>'
+  ).join('');
+  fetch('/api/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: SID }) })
+    .then(r => r.json()).then(v => {
+      const box = document.getElementById('validationBox');
+      if (!v.issues || v.issues.length === 0) {
+        box.innerHTML = '<div class="tag tag-success" style="padding:8px 16px;font-size:13px">' + IC.check + ' ' + t('noIssues') + '</div>';
+        return;
+      }
+      let html = '';
+      if (v.errors && v.errors.length)
+        html += v.errors.map(e => '<div class="tag tag-danger" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(e) + '</div>').join('');
+      if (v.warnings && v.warnings.length)
+        html += v.warnings.map(w => '<div class="tag tag-warning" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(w) + '</div>').join('');
+      box.innerHTML = html;
+    });
+}
+
+/* ─── Meta ─── */
+function renderMeta() {
+  const m = A.meta;
+  const items = [
+    { l: t('hash'), v: m.hash ? m.hash.substring(0, 16) + '...' : '?' }, { l: t('version'), v: m.version },
+    { l: t('hrfl'), v: String(m.HRFL) }, { l: t('timestamp'), v: m.ts },
+    { l: t('installDate'), v: m.installDate }, { l: t('daysSinceInstall'), v: m.daysSinceInstall },
+    { l: t('daysPlayed'), v: m.daysPlayed }, { l: t('totalRunsMeta'), v: m.totalRuns },
+    { l: t('cloudVersion'), v: m.cloud || 'N/A' },
+  ];
+  document.getElementById('metaGrid').innerHTML = items.map(i =>
+    '<div class="info-item"><div class="label">' + i.l + '</div><div class="value" style="font-size:14px;word-break:break-all">' + (i.v ?? 'N/A') + '</div></div>'
+  ).join('');
+}
+
+/* ─── Economy ─── */
+function renderEconomy() {
+  const e = A.economy;
+  const sm = A.safeMax || SAFE_MAX;
+  const mm = A.maxMultiplier || 100;
+  const fields = [
+    { key: 'coins', label: t('coins'), val: e.coins, action: 'set_coins', param: 'amount', max: sm, maxBtn: sm, tt: 'Current coin balance' },
+    { key: 'gems', label: t('gems'), val: e.gems, action: 'set_gems', param: 'amount', max: sm, maxBtn: sm, tt: 'Current gem balance' },
+    { key: 'scrolls', label: t('scrolls'), val: e.scrolls, action: 'set_scrolls', param: 'amount', max: sm, maxBtn: sm, tt: 'Map scroll count' },
+    { key: 'keys', label: t('keys'), val: e.keys, action: 'set_keys', param: 'amount', max: sm, maxBtn: sm, tt: 'Treasure chest keys' },
+    { key: 'mult', label: t('mult'), val: e.mult, action: 'set_multiplier', param: 'value', max: mm, maxBtn: mm, step: '0.1', tt: 'Score bonus coefficient' },
+  ];
+  const lvl = A.playerLevel != null ? A.playerLevel : (A.objectives?.level || 0);
+  const maxLvl = A.maxLevel || 0;
+  const gameLvl = A.gameLevel != null ? A.gameLevel : '?';
+  const maxGameLvl = A.maxGameLevel || '?';
+  let html = fields.map(f => {
+    const inp = f.step ? 'step="' + f.step + '"' : 'step="1"';
+    return '<div class="glass-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="form-label" style="margin:0">' + f.label + '</span>' +
+      '<div class="tooltip-wrap"><span class="tooltip-icon">?</span><span class="tooltip-text">' + f.tt + '</span></div></div>' +
+      '<div class="input-with-max"><input class="form-input" type="number" id="econ_' + f.key + '" name="econ_' + f.key + '" value="' + f.val + '" min="0" max="' + f.max + '" ' + inp + '>' +
+      '<button class="btn btn-secondary btn-sm" onclick="setEcon(\'' + f.action + '\',\'' + f.param + '\',\'econ_' + f.key + '\')">' + t('set') + '</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="setEconMax(\'' + f.action + '\',\'' + f.param + '\',' + f.maxBtn + ')" title="' + t('max') + '">' + t('max') + '</button></div></div>';
+  }).join('');
+  html += '<div class="glass-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="form-label" style="margin:0">' + IC.level + ' ' + t('playerLevel') + ' <small style="opacity:0.7">(Game Level: ' + gameLvl + ' / ' + maxGameLvl + ')</small></span>' +
+    '<div class="tooltip-wrap"><span class="tooltip-icon">?</span><span class="tooltip-text">Objective points total. Game Level = completed objectives ÷ 8.</span></div></div>' +
+    '<div class="input-with-max"><input class="form-input" type="number" id="econ_level" name="econ_level" value="' + lvl + '" min="0" max="' + maxLvl + '" step="1">' +
+    '<button class="btn btn-secondary btn-sm" onclick="setPlayerLevel()">' + t('set') + '</button>' +
+    '<button class="btn btn-danger btn-sm" onclick="setPlayerLevelMax(' + maxLvl + ')" title="' + t('max') + '">' + t('max') + '</button></div></div>';
+  document.getElementById('econCards').innerHTML = html;
+}
+
+function setEcon(action, param, inputId) {
+  if (A && A.mode === 'inspect') { showInspectWarning(); return; }
+  const v = document.getElementById(inputId).value;
+  const p = {};
+  p[param] = param === 'value' ? parseFloat(v) : parseInt(v);
+  editAction(action, p);
+}
+
+let maxBtnWarned = false;
+function setEconMax(action, param, maxVal) {
+  if (A && A.mode === 'inspect') { showInspectWarning(); return; }
+  if (!maxBtnWarned) { maxBtnWarned = true; toast(t('maxWarnToast'), 'warning'); }
+  const p = {};
+  p[param] = maxVal;
+  editAction(action, p);
+}
+
+function setPlayerLevel() {
+  if (A && A.mode === 'inspect') { showInspectWarning(); return; }
+  const v = parseInt(document.getElementById('econ_level').value);
+  editAction('set_player_level', { level: v });
+}
+
+function setPlayerLevelMax(maxVal) {
+  if (A && A.mode === 'inspect') { showInspectWarning(); return; }
+  if (!maxBtnWarned) { maxBtnWarned = true; toast(t('maxWarnToast'), 'warning'); }
+  editAction('set_player_level', { level: maxVal });
+}
+
+/* ─── Statistics ─── */
+function renderStats() {
+  const ls = A.stats?.lifetime || {};
+  const e = A.economy;
+  const lifetimeFields = [
+    { key: 'lcc', label: t('lcc'), val: e.lcc, action: 'set_lcc', param: 'amount' },
+    { key: 'lscc', label: t('lscc'), val: e.lscc, action: 'set_lscc', param: 'amount' },
+  ];
+  const statDefs = [
+    { key: 'HS', label: t('highScore') }, { key: 'HSNR', label: t('highScoreNR') },
+    { key: 'LD', label: t('longestDist') }, { key: 'LDNC', label: t('longestDistNC') },
+    { key: 'TD', label: t('totalDist') }, { key: 'TRUNS', label: t('totalRuns') },
+    { key: 'TRESS', label: t('totalRes') }, { key: 'TCC', label: t('totalCoins') },
+    { key: 'TGC', label: t('totalGems') }, { key: 'HCC', label: t('highCoins') },
+    { key: 'HGC', label: t('highGems') }, { key: 'TS', label: t('totalScore') },
+    { key: 'TDCC', label: t('totalDailyCC') }, { key: 'TWCC', label: t('totalWeeklyCC') },
+    { key: 'THSU', label: t('totalHeadStarts') }, { key: 'TMHSU', label: t('totalMegaHS') },
+    { key: 'TICC', label: t('totalItemsCC') }, { key: 'LPV119', label: t('lpv119') },
+  ];
+  let html = '';
+  const sm = A.safeMax || SAFE_MAX;
+  html += lifetimeFields.map(f =>
+    '<div class="stat-edit-row"><span class="stat-label">' + f.label + '</span>' +
+    '<div class="stat-value input-with-max"><input class="form-input" type="number" id="stat_lt_' + f.key + '" name="stat_lt_' + f.key + '" value="' + f.val + '" min="0" max="' + sm + '" step="1">' +
+    '<button class="btn btn-secondary btn-sm" onclick="setLifetimeStat(\'' + f.action + '\',\'' + f.param + '\',\'stat_lt_' + f.key + '\')">' + t('set') + '</button>' +
+    '<button class="btn btn-danger btn-sm" onclick="setEconMax(\'' + f.action + '\',\'' + f.param + '\',' + sm + ')" title="' + t('max') + '">' + t('max') + '</button></div></div>'
+  ).join('');
+  html += statDefs.map(s =>
+    '<div class="stat-edit-row"><span class="stat-label">' + s.label + '</span>' +
+    '<div class="stat-value input-with-max"><input class="form-input" type="number" id="stat_' + s.key + '" name="stat_' + s.key + '" value="' + (ls[s.key] || 0) + '" min="0" max="' + sm + '" step="1">' +
+    '<button class="btn btn-secondary btn-sm" onclick="setStat(\'' + s.key + '\')">' + t('set') + '</button></div></div>'
+  ).join('');
+  document.getElementById('statsCard').innerHTML = html;
+  renderStreak();
+}
+
+function renderStreak() {
+  const sk = A.streak || {};
+  document.getElementById('streakCard').innerHTML =
+    '<div class="stat-edit-row"><span class="stat-label">' + t('currentStreak') + '</span>' +
+    '<div class="stat-value"><span>' + (sk.cdcs || 0) + '</span> <span style="font-size:11px;color:var(--text-tertiary)">(server-managed)</span></div></div>' +
+    '<div class="stat-edit-row"><span class="stat-label">' + t('longestStreak') + '</span>' +
+    '<div class="stat-value"><span>' + (sk.ldcs || 0) + '</span></div></div>' +
+    '<div class="stat-edit-row"><span class="stat-label">' + t('daysPlayed') + '</span>' +
+    '<div class="stat-value"><span>' + (sk.DaysPlayed || 0) + '</span></div></div>' +
+    '<div class="stat-edit-row"><span class="stat-label">' + t('daysSinceInstall') + '</span>' +
+    '<div class="stat-value"><span>' + (sk.DaysSinceInstall || 0) + '</span></div></div>';
+}
+
+function setStreak() {
+  // Streak editing disabled — server-managed
+}
+
+function setLifetimeStat(action, param, inputId) {
+  if (A && A.mode === 'inspect') { showInspectWarning(); return; }
+  const v = document.getElementById(inputId).value;
+  const p = {}; p[param] = parseInt(v);
+  editAction(action, p);
+}
+
+async function setStat(key) {
+  if (A && A.mode === 'inspect') { showInspectWarning(); return; }
+  const v = parseInt(document.getElementById('stat_' + key).value);
+  editAction('set_stat', { key, value: v });
+}
+
+/* ─── Characters ─── */
+function renderCharacters() {
+  const chars = A.characters || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const c of chars) {
+    const st = c.owned
+      ? (c.active ? '<span class="tag tag-info">' + t('active') + '</span>' : '<span class="tag tag-success">' + t('owned') + '</span>')
+      : '<span class="tag tag-warning">' + t('notOwned') + '</span>';
+    let acts = '';
+    if (!c.owned) acts = '<button class="btn btn-primary btn-sm" onclick="editAction(\'unlock_character\',{id:' + c.id + '})">' + t('unlock') + '</button>';
+    else if (!c.active) acts = '<button class="btn btn-secondary btn-sm" onclick="editAction(\'set_active\',{id:' + c.id + '})" title="Select this character to use in game">' + t('select') + '</button> <button class="btn btn-danger btn-sm" onclick="editAction(\'remove_character\',{id:' + c.id + '})">' + t('remove') + '</button>';
+    html += '<tr><td>' + c.id + '</td><td>' + esc(c.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('charsTable').innerHTML = html;
+}
+
+/* ─── Pets ─── */
+function renderPets() {
+  const pets = A.pets || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const p of pets) {
+    const st = p.owned ? '<span class="tag tag-success">' + t('owned') + '</span>' : '<span class="tag tag-warning">' + t('notOwned') + '</span>';
+    const acts = p.owned ? '<button class="btn btn-danger btn-sm" onclick="editAction(\'remove_pet\',{id:' + p.id + '})">' + t('remove') + '</button>' : '<button class="btn btn-primary btn-sm" onclick="editAction(\'unlock_pet\',{id:' + p.id + '})">' + t('unlock') + '</button>';
+    html += '<tr><td>' + p.id + '</td><td>' + esc(p.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('petsTable').innerHTML = html;
+}
+
+/* ─── Hats ─── */
+function renderHats() {
+  const hats = A.hats || [];
+  const chars = (A.characters || []).filter(c => c.owned);
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const h of hats) {
+    let st, acts;
+    if (h.equipped && h.equippedOn) {
+      st = '<span class="tag tag-success">' + t('equipped') + ' — ' + esc(h.equippedOn.charName) + '</span>';
+      acts = '<button class="btn btn-secondary btn-sm" onclick="editAction(\'remove_hat\',{charId:' + h.equippedOn.charId + '})">' + t('unequip') + '</button> ';
+      acts += '<button class="btn btn-danger btn-sm" onclick="editAction(\'remove_hat_ownership\',{id:' + h.id + '})">' + t('remove') + '</button>';
+    } else if (h.owned) {
+      st = '<span class="tag tag-info">' + t('owned') + '</span>';
+      acts = '';
+      if (chars.length > 0) {
+        acts += '<select class="form-input form-select" id="hat_equip_' + h.id + '" name="hat_equip_' + h.id + '" style="width:auto;font-size:12px;padding:4px 28px 4px 8px;display:inline-block;vertical-align:middle" onchange="if(this.value)editAction(\'equip_hat\',{id:' + h.id + ',charId:parseInt(this.value)})">' +
+          '<option value="">' + t('equip') + '...</option>';
+        // Put active character first
+        const activeId = A.activeChar || 0;
+        const activeChar = chars.find(c => c.id === activeId);
+        if (activeChar) {
+          acts += '<option value="' + activeChar.id + '">' + esc(activeChar.name) + ' ★</option>';
+        }
+        for (const c of chars) {
+          if (c.id !== activeId) acts += '<option value="' + c.id + '">' + esc(c.name) + '</option>';
+        }
+        acts += '</select> ';
+      }
+      acts += '<button class="btn btn-danger btn-sm" onclick="editAction(\'remove_hat_ownership\',{id:' + h.id + '})">' + t('remove') + '</button>';
+    } else {
+      st = '<span class="tag tag-warning">' + t('notOwned') + '</span>';
+      acts = '<button class="btn btn-primary btn-sm" onclick="editAction(\'unlock_hat\',{id:' + h.id + '})">' + t('unlock') + '</button>';
+    }
+    html += '<tr><td>' + h.id + '</td><td>' + esc(h.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('hatsTable').innerHTML = html;
+}
+
+/* ─── Collectables ─── */
+function renderCollectables() {
+  const cols = A.collectables || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('type') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const c of cols) {
+    const tp = c.type === 'individual' ? '<span class="tag tag-info">Item</span>' : '<span class="tag">Category</span>';
+    const st = c.redeemed ? '<span class="tag tag-success">' + t('redeemed') + '</span>' : '<span class="tag tag-warning">' + t('notRedeemed') + '</span>';
+    const acts = c.redeemed ? '<button class="btn btn-danger btn-sm" onclick="editAction(\'lock_collectable\',{id:' + c.id + '})">' + t('lock') + '</button>' : '<button class="btn btn-primary btn-sm" onclick="editAction(\'unlock_collectable\',{id:' + c.id + '})">' + t('unlock') + '</button>';
+    html += '<tr><td>' + c.id + '</td><td>' + tp + '</td><td>' + esc(c.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('collectTable').innerHTML = html;
+}
+
+/* ─── Artifacts ─── */
+function renderArtifacts() {
+  const arts = A.artifacts || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const a of arts) {
+    const st = a.owned ? '<span class="tag tag-success">' + t('owned') + '</span>' : '<span class="tag tag-warning">' + t('notOwned') + '</span>';
+    const acts = a.owned ? '<button class="btn btn-danger btn-sm" onclick="editAction(\'remove_artifact\',{id:' + a.id + '})">' + t('remove') + '</button>' : '<button class="btn btn-primary btn-sm" onclick="editAction(\'unlock_artifact\',{id:' + a.id + '})">' + t('unlock') + '</button>';
+    html += '<tr><td>' + a.id + '</td><td>' + esc(a.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('artsTable').innerHTML = html;
+}
+
+/* ─── Powers ─── */
+function renderPowers() {
+  const pows = A.powers || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const p of pows) {
+    const st = p.owned ? '<span class="tag tag-success">' + t('owned') + '</span>' : '<span class="tag tag-warning">' + t('notOwned') + '</span>';
+    const acts = p.owned ? '<button class="btn btn-danger btn-sm" onclick="editAction(\'remove_power\',{id:' + p.id + '})">' + t('remove') + '</button>' : '<button class="btn btn-primary btn-sm" onclick="editAction(\'unlock_power\',{id:' + p.id + '})">' + t('unlock') + '</button>';
+    html += '<tr><td>' + p.id + '</td><td>' + esc(p.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('powsTable').innerHTML = html;
+}
+
+/* ─── Regions ─── */
+function renderRegions() {
+  const regs = A.regions || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('name') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const r of regs) {
+    const st = r.purchased ? '<span class="tag tag-success">' + t('owned') + '</span>' : '<span class="tag tag-warning">' + t('notOwned') + '</span>';
+    const acts = r.purchased ? '<button class="btn btn-danger btn-sm" onclick="editAction(\'unpurchase_region\',{id:' + r.id + '})">' + t('lock') + '</button>' : '<button class="btn btn-primary btn-sm" onclick="editAction(\'purchase_region\',{id:' + r.id + '})">' + t('unlock') + '</button>';
+    html += '<tr><td>' + r.id + '</td><td>' + esc(r.name) + '</td><td>' + st + '</td><td>' + acts + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('regsTable').innerHTML = html;
+}
+
+/* ─── Objectives ─── */
+function renderObjectives() {
+  const obj = A.objectives || {};
+  document.getElementById('objsSummary').innerHTML =
+    '<div class="info-grid"><div class="info-item"><div class="label">' + t('completed') + '</div><div class="value">' + (obj.completed || 0) + ' / ' + (obj.total || 0) +
+    '</div></div><div class="info-item"><div class="label">' + t('points') + '</div><div class="value">' + num(obj.level || 0) + '</div></div></div>';
+  const items = obj.items || [];
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('title') + '</th><th>' + t('status') + '</th><th></th></tr></thead><tbody>';
+  for (const o of items) {
+    const st = o.completed ? '<span class="tag tag-success">' + t('completed') + '</span>' : '<span class="tag tag-warning">' + t('incomplete') + '</span>';
+    const oActs = o.completed ? '<button class="btn btn-danger btn-sm" onclick="editAction(\'uncomplete_objective\',{id:' + o.id + '})">' + t('reset') + '</button>' : '';
+    html += '<tr><td>' + o.id + '</td><td>' + esc(o.title) + '</td><td>' + st + '</td><td>' + oActs + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('objsTable').innerHTML = html;
+}
+
+/* ─── Battle Pass ─── */
+function renderBattlePass() {
+  const bp = A.battlePass;
+  if (!bp) { document.getElementById('bpCard').innerHTML = '<p style="color:var(--text-secondary)">' + t('noBattlePass') + '</p>'; return; }
+  document.getElementById('bpCard').innerHTML =
+    '<div class="info-grid">' +
+    '<div class="info-item"><div class="label">' + t('title') + '</div><div class="value" style="font-size:14px">' + esc(bp.title) + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('tiers') + '</div><div class="value">' + (bp.unlockedTiers||0) + ' ' + t('unlocked') + ' / ' + bp.totalTiers + ' (' + bp.claimedTiers + ' ' + t('claimed') + ')</div></div>' +
+    '<div class="info-item"><div class="label">' + t('premium') + '</div><div class="value">' + (bp.premium ? t('yes') : t('no')) + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('start') + '</div><div class="value" style="font-size:13px">' + bp.start + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('end') + '</div><div class="value" style="font-size:13px">' + bp.end + '</div></div>' +
+    '</div>';
+}
+
+/* ─── Daily Challenges ─── */
+function renderDailyChallenges() {
+  const dc = A.dailyChallenges || [];
+  let html = '<thead><tr><th>' + t('title') + '</th><th>' + t('target') + '</th><th>' + t('earned') + '</th><th>' + t('status') + '</th></tr></thead><tbody>';
+  for (const c of dc) {
+    const st = c.status === 'Completed' ? '<span class="tag tag-success">' + t('completed') + '</span>' : '<span class="tag tag-warning">' + esc(c.status) + '</span>';
+    html += '<tr><td>' + esc(c.title) + '</td><td>' + c.target + '</td><td>' + c.earned + '</td><td>' + st + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('dcTable').innerHTML = html;
+}
+
+/* ─── Perks ─── */
+function renderPerks() {
+  const perks = A.perks || [];
+  let html = '<thead><tr><th>' + t('perk') + '</th><th>' + t('level') + '</th><th>' + t('max') + '</th></tr></thead><tbody>';
+  for (const p of perks) {
+    const pct = p.max > 0 ? Math.round(p.level/p.max*100) : 0;
+    const bar = '<div class="progress-bar"><div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div> ' + p.level + '/' + p.max + '</div>';
+    const full = p.level >= p.max;
+    const st = full ? '<span class="tag tag-success">MAX</span>' : bar;
+    html += '<tr><td>' + esc(p.name) + '</td><td>' + st + '</td><td>' + p.max + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('perksTable').innerHTML = html;
+}
+
+/* ─── Potions ─── */
+function renderPotions() {
+  const potions = A.potions || [];
+  let html = '<thead><tr><th>' + t('potionType') + '</th><th>' + t('potionCount') + '</th><th></th></tr></thead><tbody>';
+  for (let i = 0; i < potions.length; i++) {
+    const p = potions[i];
+    html += '<tr><td>' + esc(p.type) + '</td><td>' + p.count + '</td><td>' +
+      '<input type="number" class="form-input" id="potion_' + i + '" name="potion_' + i + '" style="width:80px;display:inline;padding:4px 6px;font-size:12px" min="0" max="999" value="' + p.count + '" onchange="editAction(\'set_potion\',{type:\'' + esc(p.type) + '\',count:parseInt(this.value)})">' +
+      '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('potionsTable').innerHTML = html;
+}
+
+/* ─── Idol Quest ─── */
+function renderIdolQuest() {
+  const iq = A.idolQuest;
+  if (!iq) { document.getElementById('iqCard').innerHTML = '<p style="color:var(--text-secondary)">' + t('noIdolQuest') + '</p>'; return; }
+  const st = iq.completed ? '<span class="tag tag-success">' + t('completed') + '</span>' : '<span class="tag tag-warning">' + t('inProgress') + '</span>';
+  document.getElementById('iqCard').innerHTML =
+    '<div class="info-grid">' +
+    '<div class="info-item"><div class="label">' + t('configId') + '</div><div class="value">' + (iq.cfid || '?') + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('ends') + '</div><div class="value" style="font-size:13px">' + (iq.end || '?') + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('status') + '</div><div class="value">' + st + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('levels') + '</div><div class="value">' + (iq.levelsCompleted||0) + ' / ' + (iq.totalLevels||5) + '</div></div>' +
+    '</div>';
+}
+
+/* ─── Daily Totems ─── */
+function renderDailyTotems() {
+  const dt = A.dailyTotems;
+  if (!dt) { document.getElementById('dtCard').innerHTML = '<p style="color:var(--text-secondary)">' + t('noDailyTotems') + '</p>'; return; }
+  let html = '<div class="info-grid" style="margin-bottom:16px">' +
+    '<div class="info-item"><div class="label">' + t('task') + '</div><div class="value" style="font-size:13px">' + esc(dt.desc || dt.task || '?') + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('bonusValue') + '</div><div class="value">' + dt.value + '</div></div>' +
+    '<div class="info-item"><div class="label">' + t('duration') + '</div><div class="value">' + dt.duration + ' min</div></div>' +
+    '<div class="info-item"><div class="label">' + t('found') + '</div><div class="value">' + dt.totalFound + ' / ' + dt.totalTotems + '</div></div>' +
+    '</div>';
+  if (dt.totems && dt.totems.length) {
+    html += '<table class="data-table"><thead><tr><th>' + t('type') + '</th><th>' + t('name') + '</th><th>' + t('found') + '</th></tr></thead><tbody>';
+    for (const totem of dt.totems) {
+      const st = totem.found ? '<span class="tag tag-success">' + t('found') + '</span>' : '<span class="tag tag-warning">' + t('notFound') + '</span>';
+      html += '<tr><td>' + esc(totem.type) + '</td><td>' + esc(totem.name) + '</td><td>' + st + '</td></tr>';
+    }
+    html += '</tbody></table>';
+  }
+  document.getElementById('dtCard').innerHTML = html;
+}
+
+/* ─── Global Challenges ─── */
+function renderGlobalChallenges() {
+  const gc = A.globalChallenges || [];
+  if (!gc.length) { document.getElementById('gcTable').innerHTML = '<tbody><tr><td style="color:var(--text-secondary)">' + t('noGlobalChallenges') + '</td></tr></tbody>'; return; }
+  let html = '<thead><tr><th>' + t('id') + '</th><th>' + t('progress') + '</th><th>' + t('score') + '</th><th>' + t('ends') + '</th></tr></thead><tbody>';
+  for (const c of gc) {
+    const pct = c.target > 0 ? Math.round(c.current / c.target * 100) : 0;
+    const done = c.target > 0 ? c.current >= c.target : false;
+    const bar = '<div class="progress-bar"><div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div> ' + num(c.current) + '/' + num(c.target) + '</div>';
+    const st = done ? '<span class="tag tag-success">' + t('done') + '</span>' : bar;
+    html += '<tr><td>' + c.id + '</td><td>' + st + '</td><td>' + num(c.score || 0) + '</td><td style="font-size:12px">' + (c.end || '?') + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('gcTable').innerHTML = html;
+}
+
+/* ─── Minigame ─── */
+function renderMinigame() {
+  const mg = A.minigame || {};
+  const tierList = mg.tiers || [];
+  if (!tierList.length) { document.getElementById('mgTable').innerHTML = '<tbody><tr><td style="color:var(--text-secondary)">' + t('noMinigameTiers') + '</td></tr></tbody>'; return; }
+  let html = '<thead><tr><th>' + t('tier') + '</th><th>' + t('status') + '</th></tr></thead><tbody>';
+  for (const tr of tierList) {
+    const st = tr.completed ? '<span class="tag tag-success">' + t('completed') + '</span>' : '<span class="tag tag-warning">' + t('incomplete') + '</span>';
+    html += '<tr><td>' + esc(String(tr.tier)) + '</td><td>' + st + '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('mgTable').innerHTML = html;
+}
+
+/* ─── Edit Log ─── */
+function renderLog() {
+  const log = A.editLog || [];
+  const el = document.getElementById('logEntries');
+  if (!log.length) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">' + t('logEmpty') + '</p>'; return; }
+  const modeColors = { inspect: 'var(--success)', cosmetic: 'var(--warning)', experimental: 'var(--danger)' };
+  const riskColors = { LOW: 'var(--success)', MED: 'var(--warning)', HIGH: 'var(--danger)' };
+  el.innerHTML = log.map(e => {
+    const mc = modeColors[e.mode] || 'var(--text-secondary)';
+    const rc = riskColors[e.risk] || 'var(--text-secondary)';
+    return '<div class="log-entry"><div class="log-risk log-risk-' + e.risk + '"></div><div><strong>' + esc(e.action) + '</strong> <span style="color:var(--text-secondary)">' + esc(e.detail) + '</span>' +
+      '<div style="font-size:11px;margin-top:2px"><span style="color:' + mc + ';font-weight:600">' + e.mode + '</span> <span style="color:var(--text-secondary)">|</span> <span style="color:' + rc + ';font-weight:600">' + e.risk + '</span></div></div></div>';
+  }).join('');
+}
+
+/* ─── Quick Actions ─── */
+document.getElementById('maxConfirm')?.addEventListener('change', function() {
+  document.getElementById('t_qaMaxBtn').disabled = !this.checked;
+});
+document.getElementById('randConfirm')?.addEventListener('change', function() {
+  document.getElementById('t_qaRandBtn').disabled = !this.checked;
+});
+
+function doMaxAccount() {
+  if (!document.getElementById('maxConfirm').checked) return;
+  editAction('max_account');
+}
+
+function doRandomize() {
+  if (!document.getElementById('randConfirm').checked) return;
+  editAction('randomize');
+}
+
+/* ─── Hash Config ─── */
+function toggleHashLock(checked) {
+  const wrapper = document.getElementById('hashLockWrapper');
+  const overlay = document.getElementById('hashUnlockOverlay');
+  if (checked) {
+    wrapper.classList.remove('hash-locked');
+    overlay.style.display = 'none';
+  } else {
+    wrapper.classList.add('hash-locked');
+    overlay.style.display = 'flex';
+  }
+}
+
+async function saveHashConfig() {
+  const j = await api('/api/hashkey', {
+    hash_key: document.getElementById('hashKeyInput').value,
+    hash_algo: document.getElementById('hashAlgoInput').value
+  });
+  if (j.ok) toast(t('hashSaved'), 'success');
+  else toast(j.error || 'Failed.', 'error');
+}
+
+/* ─── Raw Editor ─── */
+const RAW_SECTION_ICONS = {
+  hash:IC.lock, data:IC.file, version:IC.file, HRFL:IC.check, TS:IC.calendar, InstallDate:IC.calendar,
+  DaysSinceInstall:IC.calendar, DaysPlayed:IC.calendar, NoOfRunsSinceInstall:IC.stats, CloudSavedVersion:IC.globe,
+  Players:IC.user, coinCount:IC.coin, specialCurrencyCount:IC.gem, scrollCount:IC.file, minigameTicketCount:IC.file,
+  LCC:IC.coin, LSCC:IC.gem, SBC:IC.bolt, activePlayerCharacter:IC.user, Characters:IC.user,
+  CharacterPets:IC.paw, artifactsPurchased:IC.diamond, collectablesRedeemed:IC.gem, powersPurchased:IC.bolt,
+  objectives:IC.target, objectivesActiveData:IC.target, NCA:IC.calendar, RM:IC.globe,
+  BPPDM:IC.trophy, BPCDDM:IC.trophy, CharId:IC.user, SkinId:IC.hat, PowerId:IC.bolt,
+  PetId:IC.paw, Attachments:IC.hat, gameStats:IC.stats,
+  HS:IC.trophy, HSNR:IC.trophy, LD:IC.stats, LDNC:IC.stats, TD:IC.stats,
+  TRUNS:IC.stats, TRESS:IC.stats, TCC:IC.coin, TGC:IC.gem, HCC:IC.coin, HGC:IC.gem,
+};
+let rawAnnotations = null;
+
+async function loadRaw() {
+  const j = await api('/api/raw', {});
+  if (j.error) { toast(j.error, 'error'); return; }
+  const ta = document.getElementById('rawTextarea');
+  ta.value = j.raw;
+  rawAnnotations = j.annotations || {};
+  buildRawNav();
+  document.getElementById('rawAssistPanel').style.display = 'grid';
+  toast(t('jsonLoaded'), 'info');
+}
+
+function buildRawNav() {
+  const panel = document.getElementById('rawNavPanel');
+  if (!rawAnnotations || !Object.keys(rawAnnotations).length) { panel.innerHTML = ''; return; }
+  let html = '<div class="raw-nav-header"><span>' + t('scrollTo') + '</span>' +
+    '<button class="btn btn-secondary btn-sm" onclick="toggleShowAll()">' + t('showAll') + '</button></div>';
+  for (const [key, desc] of Object.entries(rawAnnotations)) {
+    const icon = RAW_SECTION_ICONS[key] || IC.code;
+    html += '<div class="raw-nav-item" onclick="scrollRawTo(\'' + esc(key) + '\')" title="' + esc(desc) + '">' +
+      '<span class="raw-nav-icon">' + icon + '</span><div><span>' + esc(key) + '</span>' +
+      '<div class="raw-nav-desc">' + esc(desc) + '</div></div></div>';
+  }
+  panel.innerHTML = html;
+}
+
+function scrollRawTo(key) {
+  const ta = document.getElementById('rawTextarea');
+  const text = ta.value;
+  const searchStr = '"' + key + '"';
+  const idx = text.indexOf(searchStr);
+  if (idx === -1) { toast('Key not found: ' + key, 'warning'); return; }
+  ta.focus();
+  // Reliable scroll: compute position as fraction of total text → scrollHeight
+  const linesBefore = text.substring(0, idx).split('\n').length;
+  const totalLines = text.split('\n').length;
+  const targetScroll = (linesBefore / totalLines) * ta.scrollHeight - ta.clientHeight / 3;
+  ta.scrollTop = Math.max(0, targetScroll);
+  // Select the key to highlight it
+  ta.setSelectionRange(idx, idx + searchStr.length);
+  // Update nav active state
+  document.querySelectorAll('.raw-nav-item').forEach(el => el.classList.remove('active'));
+  const items = document.querySelectorAll('.raw-nav-item');
+  for (const item of items) { if (item.textContent.includes(key)) { item.classList.add('active'); break; } }
+}
+
+function toggleShowAll() {
+  document.getElementById('rawNavPanel').classList.toggle('show-all');
+}
+
+async function saveRaw() {
+  const raw = document.getElementById('rawTextarea').value;
+  const j = await api('/api/raw_update', { raw });
+  if (j.error) { toast(j.error, 'error'); return; }
+  A = j.analysis;
+  renderAll();
+  toast(j.result, 'success');
+}
+
+/* ─── Inspect Warning Modal ─── */
+function showInspectWarning() {
+  document.getElementById('inspectModal').classList.add('show');
+}
+
+function closeInspectModal() {
+  document.getElementById('inspectModal').classList.remove('show');
+  _pendingAction = null;
+}
+
+async function switchAndRetry() {
+  const pa = _pendingAction;
+  closeInspectModal();
+  const j = await api('/api/mode', { mode: 'cosmetic' });
+  if (j.error) { toast(j.error, 'error'); return; }
+  A = j.analysis;
+  document.getElementById('modeSelect').value = 'cosmetic';
+  updateModeIndicators();
+  renderAll();
+  if (pa) {
+    await editAction(pa.action, pa.params);
+  }
+}
+
+/* ─── Field Locking ─── */
+function updateFieldLocking() {
+  if (!A) return;
+  const locked = A.mode === 'inspect';
+  const lockable = ['economy','potions','stats','characters','pets','hats','collectables','artifacts','powers','perks','regions','objectives','battlepass','daily','idolquest','dailytotems','globalchallenges','minigame','quickactions','hashconfig','raweditor'];
+  for (const s of lockable) {
+    const el = document.getElementById('sec-' + s);
+    if (!el) continue;
+    el.classList.toggle('edit-locked', locked);
+    let notice = el.querySelector('.section-readonly-notice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.className = 'section-readonly-notice';
+      notice.innerHTML = IC.lock + ' <span>' + t('readonlyNotice') + '</span>';
+      notice.onclick = function() { document.getElementById('modeSelect').value = 'cosmetic'; setMode('cosmetic'); };
+      const header = el.querySelector('.section-header');
+      if (header) header.after(notice);
+      else el.prepend(notice);
+    }
+  }
+}
+
+/* ─── Diff Modal ─── */
+async function showDiff() {
+  const j = await api('/api/diff', {});
+  const c = document.getElementById('diffContainer');
+  if (!j.changes || j.changes.length === 0) {
+    c.innerHTML = '<p style="color:var(--text-secondary)">' + t('diffEmpty') + '</p>';
+    document.getElementById('diffCount').textContent = '0 ' + t('changes');
+  } else {
+    c.innerHTML = '<div class="diff-row" style="font-weight:700;border-bottom:2px solid var(--input-border)"><span>' + t('path') + '</span><span>' + t('before') + '</span><span>' + t('after') + '</span></div>' +
+      j.changes.map(ch =>
+        '<div class="diff-row"><span class="diff-path">' + esc(String(ch.path)) + '</span><span class="diff-old">' + esc(String(ch.old)) + '</span><span class="diff-new">' + esc(String(ch.new)) + '</span></div>'
+      ).join('');
+    document.getElementById('diffCount').textContent = j.total + ' ' + (j.total !== 1 ? t('changes') : t('change'));
+  }
+  document.getElementById('diffModal').classList.add('show');
+}
+
+function closeDiff() { document.getElementById('diffModal').classList.remove('show'); }
+
+/* ─── Download ─── */
+async function downloadSave() {
+  const r = await fetch('/api/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: SID })
+  });
+  if (!r.ok) {
+    const j = await r.json();
+    let msg = j.error || 'Download failed.';
+    if (j.validation) {
+      if (j.validation.errors?.length) msg += ' Errors: ' + j.validation.errors.join(', ');
+      if (j.validation.warnings?.length) msg += ' Warnings: ' + j.validation.warnings.join(', ');
+    }
+    toast(msg, 'error');
+    return;
+  }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'gamedata.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(t('downloaded'), 'success');
+}
+
+/* ─── Utilities ─── */
+function num(n) { return Number(n).toLocaleString(); }
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + (type || 'info');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 4000);
+}
+
+function glowField(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('glow-highlight');
+  setTimeout(() => el.classList.remove('glow-highlight'), 3000);
+}
+
+/* ─── Close dropdowns on outside click ─── */
+document.addEventListener('click', e => {
+  if (!e.target.closest('.lang-picker'))
+    document.querySelectorAll('.lang-dropdown').forEach(d => d.classList.remove('show'));
+});
+
+/* ─── Responsive ─── */
+function checkResponsive() {
+  const toggle = document.getElementById('menuToggle');
+  if (window.innerWidth <= 768) toggle.style.display = 'inline-flex';
+  else { toggle.style.display = 'none'; document.getElementById('sidebar').classList.remove('open'); }
+}
+
+function autoDetectLang() {
+  const nav = navigator.language || 'en';
+  const allCodes = LANGS.flatMap(g => g.items.map(i => i.code));
+  if (allCodes.includes(nav)) return nav;
+  const base = nav.split('-')[0];
+  if (allCodes.includes(base)) return base;
+  return 'en';
+}
+
+/* ─── Init ─── */
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initIcons();
+  const savedLang = localStorage.getItem('si_lang') || autoDetectLang();
+  curLang = savedLang;
+  populateLangList('langList');
+  setLang(savedLang);
+  applyTranslations();
+  initUpload();
+  checkResponsive();
+  window.addEventListener('resize', checkResponsive);
+  window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
+    if (themes[themeIdx] === 'auto') {
+      document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+      renderSettings();
+    }
+  });
+  if (localStorage.getItem('si_agreed') === '1') {
+    document.getElementById('agreementScreen').style.display = 'none';
+    document.getElementById('uploadScreen').style.display = 'flex';
+  }
+});
+</script>
+</body>
+</html>
