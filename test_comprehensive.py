@@ -3,7 +3,10 @@
 import requests, json, sys, os
 
 BASE = "http://localhost:8080"
-SAVE = os.path.join(os.path.dirname(__file__), "gamedata.txt")
+ROOT = os.path.dirname(__file__)
+SAVE = os.path.join(ROOT, "gamedata.txt")
+if not os.path.exists(SAVE):
+    SAVE = os.path.join(ROOT, "gamedata.sample.txt")
 PASS = 0; FAIL = 0; ERRORS = []
 
 def ok(name, cond, detail=""):
