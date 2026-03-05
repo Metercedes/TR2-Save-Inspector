@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TR2 Save Inspector (Unofficial)</title>
-<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<link rel="icon" href="data:,">
 <style>
 :root {
   --glass-bg: rgba(255,255,255,.45);
@@ -2699,8 +2699,6 @@ async function downloadSave() {
   } catch (e) {
     toast('Error: ' + e.message, 'error');
   }
-}
-  toast(t('downloaded'), 'success');
 }
 
 /* ─── Utilities ─── */
