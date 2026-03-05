@@ -2068,20 +2068,18 @@ function renderOverview() {
   document.getElementById('overviewGrid').innerHTML = items.map(i =>
     '<div class="info-item"><div class="label">' + i.l + '</div><div class="value">' + i.v + '</div></div>'
   ).join('');
-  fetch('/api/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: SID }) })
-    .then(r => r.json()).then(v => {
-      const box = document.getElementById('validationBox');
-      if (!v.issues || v.issues.length === 0) {
-        box.innerHTML = '<div class="tag tag-success" style="padding:8px 16px;font-size:13px">' + IC.check + ' ' + t('noIssues') + '</div>';
-        return;
-      }
-      let html = '';
-      if (v.errors && v.errors.length)
-        html += v.errors.map(e => '<div class="tag tag-danger" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(e) + '</div>').join('');
-      if (v.warnings && v.warnings.length)
-        html += v.warnings.map(w => '<div class="tag tag-warning" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(w) + '</div>').join('');
-      box.innerHTML = html;
-    });
+  const v = editor ? editor.validate() : { issues: [], errors: [], warnings: [] };
+  const box = document.getElementById('validationBox');
+  if (!v.issues || v.issues.length === 0) {
+    box.innerHTML = '<div class="tag tag-success" style="padding:8px 16px;font-size:13px">' + IC.check + ' ' + t('noIssues') + '</div>';
+    return;
+  }
+  let html = '';
+  if (v.errors && v.errors.length)
+    html += v.errors.map(e => '<div class="tag tag-danger" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(e) + '</div>').join('');
+  if (v.warnings && v.warnings.length)
+    html += v.warnings.map(w => '<div class="tag tag-warning" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(w) + '</div>').join('');
+  box.innerHTML = html;
 }
 
 /* ─── Meta ─── */
