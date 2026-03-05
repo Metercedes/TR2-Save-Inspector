@@ -23,6 +23,11 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
+  for = "/functions.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
   for = "/Config/*"
   [headers.values]
     Cache-Control = "public, max-age=3600"
