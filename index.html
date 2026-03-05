@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Temple Run 2 Decrypter</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏃</text></svg>">
+<title>TR2 Save Inspector (Unofficial)</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
 <style>
 :root {
   --glass-bg: rgba(255,255,255,.45);
@@ -2068,18 +2068,20 @@ function renderOverview() {
   document.getElementById('overviewGrid').innerHTML = items.map(i =>
     '<div class="info-item"><div class="label">' + i.l + '</div><div class="value">' + i.v + '</div></div>'
   ).join('');
-  const v = editor ? editor.validate() : { issues: [] };
-  const box = document.getElementById('validationBox');
-  if (!v.issues || v.issues.length === 0) {
-    box.innerHTML = '<div class="tag tag-success" style="padding:8px 16px;font-size:13px">' + IC.check + ' ' + t('noIssues') + '</div>';
-  } else {
-    let vhtml = '';
-    if (v.errors && v.errors.length)
-      vhtml += v.errors.map(e => '<div class="tag tag-danger" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(e) + '</div>').join('');
-    if (v.warnings && v.warnings.length)
-      vhtml += v.warnings.map(w => '<div class="tag tag-warning" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(w) + '</div>').join('');
-    box.innerHTML = vhtml;
-  }
+  fetch('/api/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: SID }) })
+    .then(r => r.json()).then(v => {
+      const box = document.getElementById('validationBox');
+      if (!v.issues || v.issues.length === 0) {
+        box.innerHTML = '<div class="tag tag-success" style="padding:8px 16px;font-size:13px">' + IC.check + ' ' + t('noIssues') + '</div>';
+        return;
+      }
+      let html = '';
+      if (v.errors && v.errors.length)
+        html += v.errors.map(e => '<div class="tag tag-danger" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(e) + '</div>').join('');
+      if (v.warnings && v.warnings.length)
+        html += v.warnings.map(w => '<div class="tag tag-warning" style="padding:6px 14px;font-size:12px;margin:3px 0">' + IC.warn + ' ' + esc(w) + '</div>').join('');
+      box.innerHTML = html;
+    });
 }
 
 /* ─── Meta ─── */
@@ -2532,10 +2534,6 @@ function toggleHashLock(checked) {
 async function saveHashConfig() {
   hashKey = document.getElementById('hashKeyInput').value;
   hashAlgo = document.getElementById('hashAlgoInput').value;
-  if (editor) {
-    editor.hashKey = hashKey;
-    editor.hashAlgo = hashAlgo;
-  }
   toast(t('hashSaved'), 'success');
 }
 
@@ -2555,10 +2553,11 @@ const RAW_SECTION_ICONS = {
 let rawAnnotations = null;
 
 async function loadRaw() {
-  if (!editor) { toast('No save loaded.', 'error'); return; }
+  if (!editor) return;
+  const rawData = editor.exportRaw();
   const ta = document.getElementById('rawTextarea');
-  ta.value = JSON.stringify(editor.working, null, 2);
-  rawAnnotations = ANNOTATIONS;
+  ta.value = rawData;
+  rawAnnotations = ANNOTATIONS || {};
   buildRawNav();
   document.getElementById('rawAssistPanel').style.display = 'grid';
   toast(t('jsonLoaded'), 'info');
@@ -2603,15 +2602,16 @@ function toggleShowAll() {
 }
 
 async function saveRaw() {
-  if (!editor) return;
   const raw = document.getElementById('rawTextarea').value;
-  let parsed;
-  try { parsed = JSON.parse(raw); } catch (e) { toast('Invalid JSON: ' + e.message, 'error'); return; }
-  editor.working = parsed;
-  editor._preserveFloatTypes();
-  A = editor.analysis();
-  renderAll();
-  toast('Raw data applied.', 'success');
+  if (!editor) return;
+  try {
+    editor.importRaw(raw);
+    A = editor.analysis();
+    renderAll();
+    toast(t('rawSaved'), 'success');
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
 }
 
 /* ─── Inspect Warning Modal ─── */
@@ -2663,11 +2663,9 @@ function updateFieldLocking() {
 /* ─── Diff Modal ─── */
 async function showDiff() {
   if (!editor) return;
-  const result = editor.diff();
-  const changes = result.changes || [];
-  const total = result.total || 0;
+  const changes = editor.getChanges() || [];
   const c = document.getElementById('diffContainer');
-  if (changes.length === 0) {
+  if (!changes || changes.length === 0) {
     c.innerHTML = '<p style="color:var(--text-secondary)">' + t('diffEmpty') + '</p>';
     document.getElementById('diffCount').textContent = '0 ' + t('changes');
   } else {
@@ -2675,7 +2673,7 @@ async function showDiff() {
       changes.map(ch =>
         '<div class="diff-row"><span class="diff-path">' + esc(String(ch.path)) + '</span><span class="diff-old">' + esc(String(ch.old)) + '</span><span class="diff-new">' + esc(String(ch.new)) + '</span></div>'
       ).join('');
-    document.getElementById('diffCount').textContent = total + ' ' + (total !== 1 ? t('changes') : t('change'));
+    document.getElementById('diffCount').textContent = changes.length + ' ' + (changes.length !== 1 ? t('changes') : t('change'));
   }
   document.getElementById('diffModal').classList.add('show');
 }
@@ -2686,20 +2684,23 @@ function closeDiff() { document.getElementById('diffModal').classList.remove('sh
 async function downloadSave() {
   if (!editor) return;
   try {
-    editor._sanitizeForExport();
-    const dataObj = editor.working.data;
-    const fp = floatPaths;
-    const hash = await computeHash(dataObj, hashKey, hashAlgo, fp);
-    const output = { hash: hash, data: dataObj };
-    const jsonStr = customStringify(output, fp);
-    const blob = new Blob([jsonStr], { type: 'application/octet-stream' });
+    const data = editor.exportJSON();
+    let content = data;
+    if (floatPaths && floatPaths.size > 0) {
+      content = customStringify(JSON.parse(data), floatPaths);
+    }
+    const blob = new Blob([content], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'gamedata.txt';
     a.click();
     URL.revokeObjectURL(a.href);
-    toast(t('downloaded'), 'success');
-  } catch (e) { toast('Download error: ' + e.message, 'error'); }
+    toast(t('downloadSuccess'), 'success');
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+  toast(t('downloaded'), 'success');
 }
 
 /* ─── Utilities ─── */
